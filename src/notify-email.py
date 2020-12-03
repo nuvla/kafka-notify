@@ -62,7 +62,7 @@ def get_smtp_server(debug_level=0):
     return server
 
 
-def send(server, recipients, subject, message):
+def send(server, recipients, subject, message, attempts=SEND_EMAIL_ATTEMPTS):
     msg = MIMEMultipart('alternative')
     msg['Subject'] = subject
     msg['From'] = server.user
@@ -71,16 +71,17 @@ def send(server, recipients, subject, message):
                                  message=message,
                                  conditions_url=f"{NUVLA_ENDPOINT}/terms")
     msg.attach(MIMEText(html, 'html', 'utf-8'))
-    for i in range(SEND_EMAIL_ATTEMPTS):
+    for i in range(attempts):
         try:
             resp = server.sendmail(server.user, recipients, msg.as_string())
             if resp:
                 log_local.error(f'SMTP failed to deliver email to: {resp}')
-            break
+            return
         except smtplib.SMTPSenderRefused as ex:
-            log_local.error(f'Failed sending email: {ex}')
+            log_local.warning(f'Failed sending email: {ex}')
             time.sleep(.25)
-            log_local.error(f'Failed sending email: retry {i}')
+            log_local.warning(f'Failed sending email: retry {i}')
+    log_local.error(f'Failed sending email after {attempts} attempts.')
 
 
 def worker(workq: multiprocessing.Queue):
