@@ -15,6 +15,10 @@ EMAIL_TEMPLATE = Template(open('templates/base.html').read())
 NUVLA_API_LOCAL = 'http://api:8200'
 
 
+class SendFailedMaxAttempts(Exception):
+    pass
+
+
 def get_nuvla_config():
     nuvla_api_authn_header = 'group/nuvla-admin'
     config_url = f'{NUVLA_API_LOCAL}/api/configuration/nuvla'
@@ -72,6 +76,10 @@ def send(server, recipients, subject, message, attempts=SEND_EMAIL_ATTEMPTS):
                                  conditions_url=f"{NUVLA_ENDPOINT}/terms")
     msg.attach(MIMEText(html, 'html', 'utf-8'))
     for i in range(attempts):
+        if i > 0:
+            log_local.warning(f'Failed sending email: retry {i}')
+            time.sleep(.5)
+            server = get_smtp_server()
         try:
             resp = server.sendmail(server.user, recipients, msg.as_string())
             if resp:
@@ -79,9 +87,7 @@ def send(server, recipients, subject, message, attempts=SEND_EMAIL_ATTEMPTS):
             return
         except smtplib.SMTPSenderRefused as ex:
             log_local.warning(f'Failed sending email: {ex}')
-            time.sleep(.25)
-            log_local.warning(f'Failed sending email: retry {i}')
-    log_local.error(f'Failed sending email after {attempts} attempts.')
+    raise SendFailedMaxAttempts(f'Failed sending email after {attempts} attempts.')
 
 
 def worker(workq: multiprocessing.Queue):
@@ -94,8 +100,12 @@ def worker(workq: multiprocessing.Queue):
             r_state = msg.value['RESOURCE_STATE']
             m = f'<a href="{NUVLA_ENDPOINT.rstrip("/")}/ui/api/{r_id}">{r_id}</a> in state <b>{r_state}</b>'
             subject = 'nuvla notification'
-            send(smtp_server, recipients, subject, m)
-            log_local.info(f'sent: {m} to {recipients}')
+            try:
+                send(smtp_server, recipients, subject, m)
+                log_local.info(f'sent: {m} to {recipients}')
+            except SendFailedMaxAttempts as ex:
+                log_local.error(ex)
+                smtp_server = get_smtp_server()
 
 
 if __name__ == "__main__":
