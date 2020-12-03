@@ -47,6 +47,8 @@ except Exception as ex:
 KAFKA_TOPIC = os.environ.get('KAFKA_TOPIC') or 'NOTIFICATIONS_EMAIL_S'
 KAFKA_GROUP_ID = 'nuvla-notification-email'
 
+SEND_EMAIL_ATTEMPTS = 3
+
 
 def get_smtp_server(debug_level=0):
     if SMTP_SSL:
@@ -69,9 +71,16 @@ def send(server, recipients, subject, message):
                                  message=message,
                                  conditions_url=f"{NUVLA_ENDPOINT}/terms")
     msg.attach(MIMEText(html, 'html', 'utf-8'))
-    resp = server.sendmail(server.user, recipients, msg.as_string())
-    if resp:
-        log_local.error(f'SMTP failed to deliver email to: {resp}')
+    for i in range(SEND_EMAIL_ATTEMPTS):
+        try:
+            resp = server.sendmail(server.user, recipients, msg.as_string())
+            if resp:
+                log_local.error(f'SMTP failed to deliver email to: {resp}')
+            break
+        except smtplib.SMTPSenderRefused as ex:
+            log_local.error(f'Failed sending email: {ex}')
+            time.sleep(.25)
+            log_local.error(f'Failed sending email: retry {i}')
 
 
 def worker(workq: multiprocessing.Queue):
