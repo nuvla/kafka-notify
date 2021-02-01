@@ -16,8 +16,12 @@ def worker(workq: multiprocessing.Queue):
         msg = workq.get()
         if msg:
             dest = msg.value['DESTINATION']
-            r_id = msg.value['RESOURCE_ID']
-            r_state = msg.value['RESOURCE_STATE']
+            r_id = msg.value.get('RESOURCE_ID')
+            r_name = msg.value.get('NAME')
+            link_text = r_name or r_id
+            r_message = msg.value.get('MESSAGE')
+            subs_config_id = msg.value.get('SUBS_ID')
+            subs_config_txt = f'<{NUVLA_ENDPOINT}/ui/api/{subs_config_id}|Notification configuration.>'
             m = {
                 "blocks": [
                     {
@@ -34,7 +38,7 @@ def worker(workq: multiprocessing.Queue):
                         "type": "section",
                         "text": {
                             "type": "mrkdwn",
-                            "text": f"<{NUVLA_ENDPOINT}/ui/api/{r_id}|{r_id}> in state *{r_state}*"
+                            "text": f"<{NUVLA_ENDPOINT}/ui/api/{r_id}|{link_text}> *{r_message}* {subs_config_txt}"
                     }
                     }
                 ]

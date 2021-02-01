@@ -96,10 +96,17 @@ def worker(workq: multiprocessing.Queue):
         msg = workq.get()
         if msg:
             recipients = msg.value['DESTINATION'].split(',')
-            r_id = msg.value['RESOURCE_ID']
-            r_state = msg.value['RESOURCE_STATE']
-            m = f'<a href="{NUVLA_ENDPOINT.rstrip("/")}/ui/api/{r_id}">{r_id}</a> in state <b>{r_state}</b>'
-            subject = 'nuvla notification'
+
+            subs_config_id = msg.value.get('SUBS_ID')
+            subs_config_txt = f'<a href="{NUVLA_ENDPOINT}/ui/api/{subs_config_id}">Notification configuration.</a>'
+
+            r_id = msg.value.get('RESOURCE_ID')
+            r_name = msg.value.get('NAME')
+            link_text = r_name or r_id
+            r_message = msg.value.get('MESSAGE')
+            m = f'<a href="{NUVLA_ENDPOINT}/ui/api/{r_id}">{link_text}</a> <b>{r_message}</b> {subs_config_txt}'
+
+            subject = msg.value.get('SUBS_NAME') or f'{r_name or r_id} alert'
             try:
                 send(smtp_server, recipients, subject, m)
                 log_local.info(f'sent: {m} to {recipients}')
