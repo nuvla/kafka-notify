@@ -7,12 +7,17 @@ import requests
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from jinja2 import Template
+from datetime import datetime
+
 
 log_local = get_logger('email')
 
-EMAIL_TEMPLATE = Template(open('templates/base.html').read())
+EMAIL_TEMPLATE_FILE = 'templates/base.html'
+EMAIL_TEMPLATE = Template('')
 
 NUVLA_API_LOCAL = 'http://api:8200'
+
+SMTP_HOST = SMTP_USER = SMTP_PASSWORD = SMTP_PORT = SMTP_SSL = ''
 
 
 class SendFailedMaxAttempts(Exception):
@@ -29,24 +34,27 @@ def get_nuvla_config():
     return resp.json()
 
 
-try:
-    if 'SMTP_HOST' in os.environ:
-        SMTP_HOST = os.environ['SMTP_HOST']
-        SMTP_USER = os.environ['SMTP_USER']
-        SMTP_PASSWORD = os.environ['SMTP_PASSWORD']
-        SMTP_PORT = int(os.environ['SMTP_PORT'])
-        SMTP_SSL = os.environ['SMTP_SSL'].lower() in ['true', 'True']
-    else:
-        nuvla_config = get_nuvla_config()
-        SMTP_HOST = nuvla_config['smtp-host']
-        SMTP_USER = nuvla_config['smtp-username']
-        SMTP_PASSWORD = nuvla_config['smtp-password']
-        SMTP_PORT = nuvla_config['smtp-port']
-        SMTP_SSL = nuvla_config['smtp-ssl']
-except Exception as ex:
-    msg = f'Provide full SMTP config either via env vars or in configuration/nuvla: {ex}'
-    log_local.error(msg)
-    raise Exception(msg)
+def set_smpt_params():
+    global SMTP_HOST, SMTP_USER, SMTP_PASSWORD, SMTP_PORT, SMTP_SSL
+    try:
+        if 'SMTP_HOST' in os.environ:
+            SMTP_HOST = os.environ['SMTP_HOST']
+            SMTP_USER = os.environ['SMTP_USER']
+            SMTP_PASSWORD = os.environ['SMTP_PASSWORD']
+            SMTP_PORT = int(os.environ['SMTP_PORT'])
+            SMTP_SSL = os.environ['SMTP_SSL'].lower() in ['true', 'True']
+        else:
+            nuvla_config = get_nuvla_config()
+            SMTP_HOST = nuvla_config['smtp-host']
+            SMTP_USER = nuvla_config['smtp-username']
+            SMTP_PASSWORD = nuvla_config['smtp-password']
+            SMTP_PORT = nuvla_config['smtp-port']
+            SMTP_SSL = nuvla_config['smtp-ssl']
+    except Exception as ex:
+        msg = f'Provide full SMTP config either via env vars or in configuration/nuvla: {ex}'
+        log_local.error(msg)
+        raise Exception(msg)
+
 
 KAFKA_TOPIC = os.environ.get('KAFKA_TOPIC') or 'NOTIFICATIONS_EMAIL_S'
 KAFKA_GROUP_ID = 'nuvla-notification-email'
@@ -66,14 +74,38 @@ def get_smtp_server(debug_level=0):
     return server
 
 
-def send(server, recipients, subject, message, attempts=SEND_EMAIL_ATTEMPTS):
+def timestamp_convert(ts):
+    return datetime.strptime(ts, '%Y-%m-%dT%H:%M:%SZ').\
+        strftime('%a %d, %Y %H:%M:%S UTC')
+
+
+def html_content(values: dict):
+    # subs_config_id = values.get('SUBS_ID')
+    subs_config_link = f'<a href="{NUVLA_ENDPOINT}/ui/notifications">Notification configuration</a>'
+
+    r_uri = values.get('RESOURCE_URI')
+    r_name = values.get('RESOURCE_NAME')
+    component_link = f'<a href="{NUVLA_ENDPOINT}/ui/{r_uri}">{r_name or r_uri}</a>'
+    params = {
+        'title': values.get('SUBS_NAME'),
+        'subs_description': values.get('SUBS_DESCRIPTION'),
+        'component_link': component_link,
+        'metric': values.get('METRIC'),
+        'condition': values.get('CONDITION'),
+        'timestamp': timestamp_convert(values.get('TIMESTAMP')),
+        'subs_config_link': subs_config_link
+    }
+    if values.get('VALUE'):
+        params['condition'] = f"{values.get('CONDITION')} {values.get('CONDITION_VALUE')}"
+        params['value'] = values.get('VALUE')
+    return EMAIL_TEMPLATE.render(**params)
+
+
+def send(server, recipients, subject, html, attempts=SEND_EMAIL_ATTEMPTS):
     msg = MIMEMultipart('alternative')
     msg['Subject'] = subject
     msg['From'] = server.user
     msg['To'] = ', '.join(recipients)
-    html = EMAIL_TEMPLATE.render(title=subject,
-                                 message=message,
-                                 conditions_url=f"{NUVLA_ENDPOINT}/terms")
     msg.attach(MIMEText(html, 'html', 'utf-8'))
     for i in range(attempts):
         if i > 0:
@@ -92,28 +124,24 @@ def send(server, recipients, subject, message, attempts=SEND_EMAIL_ATTEMPTS):
 
 def worker(workq: multiprocessing.Queue):
     smtp_server = get_smtp_server()
+    email_template = Template(open(EMAIL_TEMPLATE_FILE).read())
     while True:
         msg = workq.get()
         if msg:
             recipients = msg.value['DESTINATION'].split(',')
-
-            subs_config_id = msg.value.get('SUBS_ID')
-            subs_config_txt = f'<a href="{NUVLA_ENDPOINT}/ui/api/{subs_config_id}">Notification configuration.</a>'
-
             r_id = msg.value.get('RESOURCE_ID')
             r_name = msg.value.get('NAME')
-            link_text = r_name or r_id
-            r_message = msg.value.get('MESSAGE')
-            m = f'<a href="{NUVLA_ENDPOINT}/ui/api/{r_id}">{link_text}</a> <b>{r_message}</b> {subs_config_txt}'
-
             subject = msg.value.get('SUBS_NAME') or f'{r_name or r_id} alert'
             try:
-                send(smtp_server, recipients, subject, m)
-                log_local.info(f'sent: {m} to {recipients}')
+                html = html_content(msg.value)
+                send(smtp_server, recipients, subject, html)
+                log_local.info(f'sent: {msg} to {recipients}')
             except SendFailedMaxAttempts as ex:
                 log_local.error(ex)
                 smtp_server = get_smtp_server()
 
 
 if __name__ == "__main__":
+    EMAIL_TEMPLATE = Template(open(EMAIL_TEMPLATE_FILE).read())
+    set_smpt_params()
     main(worker, KAFKA_TOPIC, KAFKA_GROUP_ID)

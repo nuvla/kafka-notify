@@ -79,7 +79,7 @@
 
       .wrapper {
         box-sizing: border-box;
-        padding: 20px;
+        padding: 10px;
       }
 
       .content-block {
@@ -364,27 +364,66 @@
                     </tr>
                     <tr>
                         <td class="wrapper">
+                            {{subs_description}}
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="wrapper">
                             <table role="presentation" border="0" cellpadding="0" cellspacing="0">
                                 <tr>
                                     <td>
-                                        <p>{{message}}</p>
-
-                                        {% if conditions_url %}
-                                        <p>By clicking the link above, you accept the <a href="{{conditions_url}}">Terms and Conditions</a></p>
-                                        {% endif %}
-
-                                        <p>Don't forget that we're here to help if you have any question.</p>
-
-                                        <br/>
-                                        <p>Kind regards,</p>
-                                        <p>SixSq Team</p>
-
+                                        <b>Component</b>
                                     </td>
+                                    <td>
+                                        <b>Metric</b>
+                                    </td>
+                                    <td>
+                                        <p><b>Condition</b></p>
+                                    </td>
+                                    {% if value is defined %}
+                                        <td>
+                                            <p><b>Value</b></p>
+                                        </td>
+                                    {% endif %}
+                                </tr>
+                                <tr>
+                                    <td>
+                                        {{component_link}}
+                                    </td>
+                                    <td>
+                                        {{metric}}
+                                    </td>
+                                    <td>
+                                        {{condition}}
+                                    </td>
+                                    {% if value is defined %}
+                                        <td>
+                                            {{value}}
+                                        </td>
+                                    {% endif %}
                                 </tr>
                             </table>
                         </td>
                     </tr>
+                    <tr>
+                        <td class="wrapper">
+                            <p><b>Timestamp</b> {{timestamp}}</p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="wrapper">
+                            <p>{{subs_config_link}}</p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="wrapper">
+                            <p>Don't forget that we're here to help if you have any question.</p>
 
+                            <br/>
+                            <p>Kind regards,</p>
+                            <p>SixSq Team</p>
+                        </td>
+                    </tr>
                     <!-- END MAIN CONTENT AREA -->
                 </table>
                 <!-- END CENTERED WHITE CONTAINER -->
@@ -394,7 +433,7 @@
                     <table role="presentation" border="0" cellpadding="0" cellspacing="0">
                         <tr>
                             <td class="content-block">
-                                <span class="apple-link">Copyright © 2020 SixSq Sàrl. All rights reserved.</span>
+                                <span class="apple-link">Copyright © 2021 SixSq Sàrl. All rights reserved.</span>
                             </td>
                         </tr>
                     </table>
