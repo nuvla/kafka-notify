@@ -5,6 +5,6 @@
   "RESOURCE_URI": "edge/1c2347d5-9463-47d4-a540-fffa3aad1367",
   "RESOURCE_NAME": "NB London",
   "METRIC": "NB online",
-  "CONDITION": "NO",
+  "CONDITION": "no",
   "TIMESTAMP": "2021-02-01T10:11:12Z"
 }

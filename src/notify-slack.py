@@ -22,7 +22,7 @@ def build_text(values: dict):
         value = values.get('VALUE')
         message = f'_{metric}_ *{condition}* *{value}*'
     else:
-        condition = values.get('CONDITION')
+        condition = values.get('CONDITION', '').upper()
         message = f'_{metric}_ *{condition}*'
 
     r_uri = values.get('RESOURCE_URI')
