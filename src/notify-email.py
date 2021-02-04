@@ -86,6 +86,7 @@ def html_content(values: dict):
     r_uri = values.get('RESOURCE_URI')
     r_name = values.get('RESOURCE_NAME')
     component_link = f'<a href="{NUVLA_ENDPOINT}/ui/{r_uri}">{r_name or r_uri}</a>'
+    img_alert_nok = 'ui/images/nuvla-alert-nok.png'
     params = {
         'title': values.get('SUBS_NAME'),
         'subs_description': values.get('SUBS_DESCRIPTION'),
@@ -93,7 +94,9 @@ def html_content(values: dict):
         'metric': values.get('METRIC'),
         'condition': values.get('CONDITION'),
         'timestamp': timestamp_convert(values.get('TIMESTAMP')),
-        'subs_config_link': subs_config_link
+        'subs_config_link': subs_config_link,
+        'header_img': f'{NUVLA_ENDPOINT}/{img_alert_nok}',
+        'current_year': str(datetime.now().year)
     }
     if values.get('VALUE'):
         params['condition'] = f"{values.get('CONDITION')} {values.get('CONDITION_VALUE')}"
