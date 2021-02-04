@@ -74,11 +74,6 @@ def get_smtp_server(debug_level=0):
     return server
 
 
-def timestamp_convert(ts):
-    return datetime.strptime(ts, '%Y-%m-%dT%H:%M:%SZ').\
-        strftime('%a %d, %Y %H:%M:%S UTC')
-
-
 def html_content(values: dict):
     # subs_config_id = values.get('SUBS_ID')
     subs_config_link = f'<a href="{NUVLA_ENDPOINT}/ui/notifications">Notification configuration</a>'

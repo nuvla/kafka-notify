@@ -5,6 +5,7 @@ import queue
 import os
 import sys
 import time
+from datetime import datetime
 from kafka import KafkaConsumer
 
 
@@ -46,6 +47,11 @@ def kafka_consumer(topic, bootstrap_servers, group_id, auto_offset_reset='latest
                              value_deserializer=lambda x: json.loads(x.decode()))
     log.info("Kafka consumer created.")
     return consumer
+
+
+def timestamp_convert(ts):
+    return datetime.strptime(ts, '%Y-%m-%dT%H:%M:%SZ'). \
+        strftime('%a %d, %Y %H:%M:%S UTC')
 
 
 def main(worker, kafka_topic, group_id):
