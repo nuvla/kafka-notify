@@ -1,0 +1,12 @@
+{
+  "SUBS_ID": "subscription-config/1-2-3-4-5",
+  "SUBS_NAME": "NB Paris CPU load high",
+  "SUBS_DESCRIPTION": "CPU load too high on NB Paris",
+  "RESOURCE_URI": "edge/1c2347d5-9463-47d4-a540-fffa3aad1367",
+  "RESOURCE_NAME": "NB Paris",
+  "METRIC": "CPU load %",
+  "CONDITION": ">",
+  "CONDITION_VALUE": "75",
+  "VALUE": "85",
+  "TIMESTAMP": "2021-02-01T10:11:12Z"
+}
