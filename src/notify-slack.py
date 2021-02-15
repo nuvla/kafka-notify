@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import requests
+import re
 
 from notify_deps import *
 
@@ -9,21 +10,25 @@ KAFKA_GROUP_ID = 'nuvla-notification-slack'
 
 log_local = get_logger('slack')
 
+gt = re.compile('>')
+lt = re.compile('<')
 
-def build_text(values: dict):
+
+def message_content(values: dict):
     # subs_config_id = values.get('SUBS_ID')
-    subs_name = values.get('SUBS_NAME')
+    subs_name = lt.sub('&lt;', gt.sub('&gt;', values.get('SUBS_NAME', '')))
     subs_config_txt = f'<{NUVLA_ENDPOINT}/ui/notifications|{subs_name}>'
 
     metric = values.get('METRIC')
     if values.get('VALUE'):
-        # values.get('CONDITION_VALUE')
+        cond_value = values.get('CONDITION_VALUE')
         condition = f"{values.get('CONDITION')}"
-        value = values.get('VALUE')
-        message = f'_{metric}_ *{condition}* *{value}*'
+        criteria = f'_{metric}_ {gt.sub("&gt;", lt.sub("&lt;", condition))} *{cond_value}*'
+        value = f"*{values.get('VALUE')}*"
     else:
         condition = values.get('CONDITION', '').upper()
-        message = f'_{metric}_ *{condition}*'
+        criteria = f'_{metric}_'
+        value = f'*{condition}*'
 
     r_uri = values.get('RESOURCE_URI')
     r_name = values.get('RESOURCE_NAME')
@@ -32,19 +37,41 @@ def build_text(values: dict):
 
     ts = timestamp_convert(values.get('TIMESTAMP'))
 
-    msg = f":ghost:\n{subs_config_txt}\n{component}\n{message}\n{ts}"
-    return msg
-
-
-def message_content(values: dict):
     return {
-        "blocks": [
+        "attachments": [
             {
-                "type": "section",
-                "text": {
-                    "type": "mrkdwn",
-                    "text": build_text(values)
-                }
+                "color": "#B70B0B",
+                "author_name": "Nuvla",
+                "author_link": "https://sixsq.com",
+                "author_icon": "https://sixsq.com/img/logo/logo_sixsq.png",
+                "fields": [
+                    {
+                        "title": "Notification",
+                        "value": subs_config_txt,
+                        "short": True
+                    },
+                    {
+                        "title": "Affected resource",
+                        "value": component,
+                        "short": True
+                    },
+                    {
+                        "title": "Criteria",
+                        "value": criteria,
+                        "short": True
+                    },
+                    {
+                        "title": "Value",
+                        "value": value,
+                        "short": True
+                    },
+                    {
+                        "title": "Event Timestamp",
+                        "value": ts,
+                        "short": True
+                    }
+                ],
+                "ts": datetime.now().timestamp()
             }
         ]
     }
