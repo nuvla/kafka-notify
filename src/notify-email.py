@@ -62,7 +62,7 @@ KAFKA_GROUP_ID = 'nuvla-notification-email'
 SEND_EMAIL_ATTEMPTS = 3
 
 
-def get_smtp_server(debug_level=0):
+def get_smtp_server(debug_level=0) -> smtplib.SMTP:
     if SMTP_SSL:
         server = smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT)
     else:
@@ -99,7 +99,7 @@ def html_content(values: dict):
     return EMAIL_TEMPLATE.render(**params)
 
 
-def send(server, recipients, subject, html, attempts=SEND_EMAIL_ATTEMPTS):
+def send(server: smtplib.SMTP, recipients, subject, html, attempts=SEND_EMAIL_ATTEMPTS):
     msg = MIMEMultipart('alternative')
     msg['Subject'] = subject
     msg['From'] = server.user
@@ -109,14 +109,16 @@ def send(server, recipients, subject, html, attempts=SEND_EMAIL_ATTEMPTS):
         if i > 0:
             log_local.warning(f'Failed sending email: retry {i}')
             time.sleep(.5)
+            log_local.warning(f'Reconnecting to SMTP server...')
             server = get_smtp_server()
+            log_local.warning(f'Reconnecting to SMTP server... done.')
         try:
             resp = server.sendmail(server.user, recipients, msg.as_string())
             if resp:
                 log_local.error(f'SMTP failed to deliver email to: {resp}')
             return
-        except smtplib.SMTPSenderRefused as ex:
-            log_local.warning(f'Failed sending email: {ex}')
+        except smtplib.SMTPException as ex:
+            log_local.error(f'Failed sending email due to SMTP error: {ex}')
     raise SendFailedMaxAttempts(f'Failed sending email after {attempts} attempts.')
 
 
