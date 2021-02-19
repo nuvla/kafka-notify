@@ -8,6 +8,12 @@
 
 ### Changed
 
+## [0.4.2] - 2021-02-19
+
+### Changed
+
+ - Go into retry loop in internal msg send on any smtp error.
+
 ## [0.4.1] - 2021-02-19
 
 ### Changed
