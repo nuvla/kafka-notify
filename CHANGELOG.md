@@ -8,6 +8,8 @@
 
 ### Changed
 
+ - Fix: catch any issue with smtp connection and reconnect.
+
 ## [0.4.0] - 2021-02-16
 
 ### Changed

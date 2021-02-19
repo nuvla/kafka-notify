@@ -122,7 +122,6 @@ def send(server, recipients, subject, html, attempts=SEND_EMAIL_ATTEMPTS):
 
 def worker(workq: multiprocessing.Queue):
     smtp_server = get_smtp_server()
-    email_template = Template(open(EMAIL_TEMPLATE_FILE).read())
     while True:
         msg = workq.get()
         if msg:
@@ -134,9 +133,13 @@ def worker(workq: multiprocessing.Queue):
                 html = html_content(msg.value)
                 send(smtp_server, recipients, subject, html)
                 log_local.info(f'sent: {msg} to {recipients}')
-            except SendFailedMaxAttempts as ex:
-                log_local.error(ex)
+            except smtplib.SMTPException as ex:
+                log_local.error(f'Failed sending email due to SMTP error: {ex}')
+                log_local.warning(f'Reconnecting to SMTP server...')
                 smtp_server = get_smtp_server()
+                log_local.warning(f'Reconnecting to SMTP server... done.')
+            except Exception as ex:
+                log_local.error(f'Failed sending email: {ex}')
 
 
 if __name__ == "__main__":
