@@ -19,6 +19,9 @@ NUVLA_API_LOCAL = 'http://api:8200'
 
 SMTP_HOST = SMTP_USER = SMTP_PASSWORD = SMTP_PORT = SMTP_SSL = ''
 
+IMG_ALERT_OK = 'ui/images/nuvla-alert-ok.png'
+IMG_ALERT_NOK = 'ui/images/nuvla-alert-nok.png'
+
 
 class SendFailedMaxAttempts(Exception):
     pass
@@ -81,16 +84,21 @@ def html_content(values: dict):
     r_uri = values.get('RESOURCE_URI')
     r_name = values.get('RESOURCE_NAME')
     component_link = f'<a href="{NUVLA_ENDPOINT}/ui/{r_uri}">{r_name or r_uri}</a>'
-    img_alert_nok = 'ui/images/nuvla-alert-nok.png'
+    metric = values.get('METRIC')
+    condition = values.get('CONDITION')
+    if metric == 'NB online' and condition.lower() == 'yes':
+        img_alert = IMG_ALERT_OK
+    else:
+        img_alert = IMG_ALERT_NOK
     params = {
         'title': values.get('SUBS_NAME'),
         'subs_description': values.get('SUBS_DESCRIPTION'),
         'component_link': component_link,
-        'metric': values.get('METRIC'),
-        'condition': values.get('CONDITION'),
+        'metric': metric,
+        'condition': condition.upper(),
         'timestamp': timestamp_convert(values.get('TIMESTAMP')),
         'subs_config_link': subs_config_link,
-        'header_img': f'{NUVLA_ENDPOINT}/{img_alert_nok}',
+        'header_img': f'{NUVLA_ENDPOINT}/{img_alert}',
         'current_year': str(datetime.now().year)
     }
     if values.get('VALUE'):

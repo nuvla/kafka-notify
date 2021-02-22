@@ -13,6 +13,9 @@ log_local = get_logger('slack')
 gt = re.compile('>')
 lt = re.compile('<')
 
+COLOR_OK = "#2C9442"
+COLOR_NOK = "#B70B0B"
+
 
 def message_content(values: dict):
     # subs_config_id = values.get('SUBS_ID')
@@ -37,10 +40,15 @@ def message_content(values: dict):
 
     ts = timestamp_convert(values.get('TIMESTAMP'))
 
+    if metric == 'NB online' and condition.lower() == 'yes':
+        color = COLOR_OK
+    else:
+        color = COLOR_NOK
+
     return {
         "attachments": [
             {
-                "color": "#B70B0B",
+                "color": color,
                 "author_name": "Nuvla",
                 "author_link": "https://sixsq.com",
                 "author_icon": "https://sixsq.com/img/logo/logo_sixsq.png",

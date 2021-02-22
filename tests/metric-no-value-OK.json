@@ -1,0 +1,10 @@
+{
+  "SUBS_ID": "subscription-config/1-2-3-4-5",
+  "SUBS_NAME": "NB London off-line",
+  "SUBS_DESCRIPTION": "NB in London off-line",
+  "RESOURCE_URI": "edge/1c2347d5-9463-47d4-a540-fffa3aad1367",
+  "RESOURCE_NAME": "NB London",
+  "METRIC": "NB online",
+  "CONDITION": "yes",
+  "TIMESTAMP": "2021-02-01T10:11:12Z"
+}

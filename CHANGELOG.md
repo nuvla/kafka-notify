@@ -8,6 +8,12 @@
 
 ### Changed
 
+## [0.4.3] - 2021-02-22
+
+### Changed
+
+ - Slack alert color and email image are green for NB online.
+
 ## [0.4.2] - 2021-02-19
 
 ### Changed
