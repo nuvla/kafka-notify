@@ -7,11 +7,13 @@ import notify_email
 
 notify_email.EMAIL_TEMPLATE = Template(open('../src/templates/base.html').read())
 
-values = json.loads(open('metric-no-value-OK.json').read())
-open('email-no-value-OK.html', 'w').write(notify_email.html_content(values))
+tests = [
+    'metric-no-value-NOK.json',
+    'metric-no-value-OK.json',
+    'metric-with-value-NOK.json',
+    'metric-with-value-OK.json'
+]
 
-values = json.loads(open('metric-no-value-NOK.json').read())
-open('email-no-value-NOK.html', 'w').write(notify_email.html_content(values))
-
-values = json.loads(open('metric-with-value.json').read())
-open('email-with-value.html', 'w').write(notify_email.html_content(values))
+for t in tests:
+    values = json.loads(open(t).read())
+    open(t.replace('json', 'html'), 'w').write(notify_email.html_content(values))

@@ -7,6 +7,7 @@
   "METRIC": "CPU load %",
   "CONDITION": ">",
   "CONDITION_VALUE": "75",
-  "VALUE": "85",
+  "VALUE": "65",
+  "RECOVERY": true,
   "TIMESTAMP": "2021-02-01T10:11:12Z"
 }

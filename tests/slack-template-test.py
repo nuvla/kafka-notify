@@ -7,11 +7,13 @@ import notify_slack
 # Slack webhook URL
 dest = sys.argv[1]
 
-values = json.loads(open('metric-no-value-NOK.json').read())
-notify_slack.send_message(dest, notify_slack.message_content(values))
+tests = [
+    'metric-no-value-NOK.json',
+    'metric-no-value-OK.json',
+    'metric-with-value-NOK.json',
+    'metric-with-value-OK.json'
+]
 
-values = json.loads(open('metric-no-value-OK.json').read())
-notify_slack.send_message(dest, notify_slack.message_content(values))
-
-values = json.loads(open('metric-with-value.json').read())
-notify_slack.send_message(dest, notify_slack.message_content(values))
+for t in tests:
+    values = json.loads(open(t).read())
+    notify_slack.send_message(dest, notify_slack.message_content(values))
