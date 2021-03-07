@@ -6,5 +6,6 @@
   "RESOURCE_NAME": "NB London",
   "METRIC": "NB online",
   "CONDITION": "no",
+  "RECOVERY": false,
   "TIMESTAMP": "2021-02-01T10:11:12Z"
 }

@@ -44,7 +44,10 @@ def set_smpt_params():
             SMTP_HOST = os.environ['SMTP_HOST']
             SMTP_USER = os.environ['SMTP_USER']
             SMTP_PASSWORD = os.environ['SMTP_PASSWORD']
-            SMTP_PORT = int(os.environ['SMTP_PORT'])
+            try:
+                SMTP_PORT = int(os.environ['SMTP_PORT'])
+            except ValueError:
+                raise Exception(f"Incorrect value for SMTP_PORT number: {os.environ['SMTP_PORT']}")
             SMTP_SSL = os.environ['SMTP_SSL'].lower() in ['true', 'True']
         else:
             nuvla_config = get_nuvla_config()
@@ -86,12 +89,14 @@ def html_content(values: dict):
     component_link = f'<a href="{NUVLA_ENDPOINT}/ui/{r_uri}">{r_name or r_uri}</a>'
     metric = values.get('METRIC')
     condition = values.get('CONDITION')
-    if metric == 'NB online' and condition.lower() == 'yes':
+    if values.get('RECOVERY', False):
         img_alert = IMG_ALERT_OK
+        title = f"[OK] {values.get('SUBS_NAME')}"
     else:
         img_alert = IMG_ALERT_NOK
+        title = f"[Alert] {values.get('SUBS_NAME')}"
     params = {
-        'title': values.get('SUBS_NAME'),
+        'title': title,
         'subs_description': values.get('SUBS_DESCRIPTION'),
         'component_link': component_link,
         'metric': metric,
@@ -110,7 +115,7 @@ def html_content(values: dict):
 def send(server: smtplib.SMTP, recipients, subject, html, attempts=SEND_EMAIL_ATTEMPTS):
     msg = MIMEMultipart('alternative')
     msg['Subject'] = subject
-    msg['From'] = server.user
+    msg['From'] = f'Nuvla <{server.user}>'
     msg['To'] = ', '.join(recipients)
     msg.attach(MIMEText(html, 'html', 'utf-8'))
     for i in range(attempts):

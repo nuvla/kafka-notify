@@ -40,10 +40,12 @@ def message_content(values: dict):
 
     ts = timestamp_convert(values.get('TIMESTAMP'))
 
-    if metric == 'NB online' and condition.lower() == 'yes':
+    if values.get('RECOVERY', False):
         color = COLOR_OK
+        notif_title = "[OK] Notification"
     else:
         color = COLOR_NOK
+        notif_title = "[Alert] Notification"
 
     return {
         "attachments": [
@@ -54,7 +56,7 @@ def message_content(values: dict):
                 "author_icon": "https://sixsq.com/img/logo/logo_sixsq.png",
                 "fields": [
                     {
-                        "title": "Notification",
+                        "title": notif_title,
                         "value": subs_config_txt,
                         "short": True
                     },
