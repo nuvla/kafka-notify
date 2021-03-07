@@ -2,14 +2,16 @@
 
 ## Unreleased
 
-### Updated
+### Changed
+
+### Added
+
+## [0.5.0] - 2021-03-07
 
 ### Added
 
  - Alert and recovery notifications based on recovery flag in messages.
  - Set name for SMTP From.
-
-### Changed
 
 ## [0.4.3] - 2021-02-22
 
