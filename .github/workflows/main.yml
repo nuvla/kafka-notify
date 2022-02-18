@@ -25,6 +25,9 @@ jobs:
           pip install -r requirements.tests.txt
           pytest tests/ --junitxml=test-report.xml -v
 
+      - name: Multi-arch docker image build prerequired
+        run: sudo docker run --privileged linuxkit/binfmt:v0.7
+
       - name: Build and deploy on architecture
         env:
           DOCKER_USERNAME: ${{ secrets.SIXSQ_DOCKER_USERNAME }}
