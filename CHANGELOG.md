@@ -6,9 +6,11 @@
 
 ### Added
 
+## [0.6.0] - 2022-02-18
+
 ### Changed
 
- - Fixed email notifier must split list of emails on spaces.
+ - Fix: email notifier must split list of emails on spaces.
  - CI: added unit-test execution, build image for arm64 in CI.
 
 ## [0.5.0] - 2021-03-07
