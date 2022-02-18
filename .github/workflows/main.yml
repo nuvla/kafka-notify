@@ -1,6 +1,4 @@
-# This is a basic workflow to help you get started with Actions
-
-name: CI
+name: "Test and build notification scripts."
 
 on:
   push:
@@ -13,18 +11,31 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
 
     steps:
       - uses: actions/checkout@v2
 
-      - name: Run a one-line script
-        run: echo Hello, world!
+      - uses: actions/setup-python@v2
+        with:
+          python-version: '3.8'
 
-      - name: Run a multi-line script
+      - name: Run unit tests
         run: |
-          echo Add other actions to build,
-          echo test, and deploy your project.
+          pip install -r requirements.test.txt
+          pytest tests/ --junitxml=test-report.xml -v
+
+      - name: Build and deploy on architecture
+        env:
+          DOCKER_USERNAME: ${{ secrets.SIXSQ_DOCKER_USERNAME }}
+          DOCKER_PASSWORD: ${{ secrets.SIXSQ_DOCKER_PASSWORD }}
+        run: ./container-release.sh
+
+      - name: Publish Unit Test Results
+        uses: EnricoMi/publish-unit-test-result-action@v1
+        if: always()
+        with:
+          files: test-report.xml
 
   notify:
     if: always()

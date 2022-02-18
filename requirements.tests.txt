@@ -1,0 +1,2 @@
+-r requerements.txt
+pytest==7.0.1
