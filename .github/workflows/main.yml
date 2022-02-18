@@ -22,7 +22,7 @@ jobs:
 
       - name: Run unit tests
         run: |
-          pip install -r requirements.test.txt
+          pip install -r requirements.tests.txt
           pytest tests/ --junitxml=test-report.xml -v
 
       - name: Build and deploy on architecture
