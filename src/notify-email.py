@@ -1,13 +1,17 @@
 #!/usr/bin/env python3
 
-from notify_deps import *
-
-import smtplib
+import multiprocessing
+import os
 import requests
+import smtplib
+import time
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from jinja2 import Template
 from datetime import datetime
+
+from notify_deps import get_logger, timestamp_convert, main
+from notify_deps import NUVLA_ENDPOINT
 
 
 log_local = get_logger('email')
@@ -33,7 +37,7 @@ def get_nuvla_config():
     headers = {'nuvla-authn-info': nuvla_api_authn_header}
     resp = requests.get(config_url, headers=headers)
     if resp.status_code != 200:
-        raise Exception(f'Failed to get response from server: status {resp.status_code}')
+        raise EnvironmentError(f'Failed to get response from server: status {resp.status_code}')
     return resp.json()
 
 
@@ -47,7 +51,7 @@ def set_smpt_params():
             try:
                 SMTP_PORT = int(os.environ['SMTP_PORT'])
             except ValueError:
-                raise Exception(f"Incorrect value for SMTP_PORT number: {os.environ['SMTP_PORT']}")
+                raise ValueError(f"Incorrect value for SMTP_PORT number: {os.environ['SMTP_PORT']}")
             SMTP_SSL = os.environ['SMTP_SSL'].lower() in ['true', 'True']
         else:
             nuvla_config = get_nuvla_config()
@@ -59,7 +63,7 @@ def set_smpt_params():
     except Exception as ex:
         msg = f'Provide full SMTP config either via env vars or in configuration/nuvla: {ex}'
         log_local.error(msg)
-        raise Exception(msg)
+        raise ValueError(msg)
 
 
 KAFKA_TOPIC = os.environ.get('KAFKA_TOPIC') or 'NOTIFICATIONS_EMAIL_S'
@@ -81,7 +85,6 @@ def get_smtp_server(debug_level=0) -> smtplib.SMTP:
 
 
 def html_content(values: dict):
-    # subs_config_id = values.get('SUBS_ID')
     subs_config_link = f'<a href="{NUVLA_ENDPOINT}/ui/notifications">Notification configuration</a>'
 
     r_uri = values.get('RESOURCE_URI')
@@ -135,12 +138,19 @@ def send(server: smtplib.SMTP, recipients, subject, html, attempts=SEND_EMAIL_AT
     raise SendFailedMaxAttempts(f'Failed sending email after {attempts} attempts.')
 
 
+def get_recipients(v: dict):
+    return list(filter(lambda x: x != '', v.get('DESTINATION', '').split(' ')))
+
+
 def worker(workq: multiprocessing.Queue):
     smtp_server = get_smtp_server()
     while True:
         msg = workq.get()
         if msg:
-            recipients = msg.value['DESTINATION'].split(',')
+            recipients = get_recipients(msg.value)
+            if len(recipients) == 0:
+                log_local.warning(f'No recipients provided in: {msg.value}')
+                continue
             r_id = msg.value.get('RESOURCE_ID')
             r_name = msg.value.get('NAME')
             subject = msg.value.get('SUBS_NAME') or f'{r_name or r_id} alert'

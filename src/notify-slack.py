@@ -1,9 +1,14 @@
 #!/usr/bin/env python3
 
+import json
+import datetime
+import multiprocessing
 import requests
+import os
 import re
 
-from notify_deps import *
+from notify_deps import get_logger, timestamp_convert, main
+from notify_deps import NUVLA_ENDPOINT
 
 KAFKA_TOPIC = os.environ.get('KAFKA_TOPIC') or 'NOTIFICATIONS_SLACK_S'
 KAFKA_GROUP_ID = 'nuvla-notification-slack'
@@ -18,7 +23,6 @@ COLOR_NOK = "#B70B0B"
 
 
 def message_content(values: dict):
-    # subs_config_id = values.get('SUBS_ID')
     subs_name = lt.sub('&lt;', gt.sub('&gt;', values.get('SUBS_NAME', '')))
     subs_config_txt = f'<{NUVLA_ENDPOINT}/ui/notifications|{subs_name}>'
 
