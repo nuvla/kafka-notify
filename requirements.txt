@@ -2,3 +2,5 @@ kafka-python==2.0.2
 requests==2.25.0
 urllib3==1.26.2
 Jinja2==2.11.2
+# To fix https://github.com/aws/aws-sam-cli/issues/3661
+markupsafe==2.0.1
