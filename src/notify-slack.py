@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import json
-import datetime
+from datetime import datetime
 import multiprocessing
 import requests
 import os
@@ -20,6 +20,10 @@ lt = re.compile('<')
 
 COLOR_OK = "#2C9442"
 COLOR_NOK = "#B70B0B"
+
+
+def now_timestamp():
+    return datetime.now().timestamp()
 
 
 def message_content(values: dict):
@@ -85,7 +89,7 @@ def message_content(values: dict):
                         "short": True
                     }
                 ],
-                "ts": datetime.now().timestamp()
+                "ts": now_timestamp()
             }
         ]
     }
