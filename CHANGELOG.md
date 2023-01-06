@@ -4,6 +4,10 @@
 
 ### Changed
 
+## [0.6.1] - 2023-01-06
+
+### Changed
+
 - Fix: bad import of datetime in notify-slack.
 
 ### Added
