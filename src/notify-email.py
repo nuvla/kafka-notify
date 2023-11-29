@@ -84,34 +84,36 @@ def get_smtp_server(debug_level=0) -> smtplib.SMTP:
     return server
 
 
-def html_content(values: dict):
-    subs_config_link = f'<a href="{NUVLA_ENDPOINT}/ui/notifications">Notification configuration</a>'
+def html_content(msg_params: dict):
+    log_local.info(f'msg_params: {msg_params}')
+    r_uri = msg_params.get('RESOURCE_URI')
+    link_text = msg_params.get('RESOURCE_NAME') or r_uri
+    component_link = f'<a href="{NUVLA_ENDPOINT}/ui/{r_uri}">{link_text}</a>'
 
-    r_uri = values.get('RESOURCE_URI')
-    r_name = values.get('RESOURCE_NAME')
-    component_link = f'<a href="{NUVLA_ENDPOINT}/ui/{r_uri}">{r_name or r_uri}</a>'
-    metric = values.get('METRIC')
-    condition = values.get('CONDITION')
-    if values.get('RECOVERY', False):
+    if msg_params.get('RECOVERY', False):
         img_alert = IMG_ALERT_OK
-        title = f"[OK] {values.get('SUBS_NAME')}"
+        title = f"[OK] {msg_params.get('SUBS_NAME')}"
     else:
         img_alert = IMG_ALERT_NOK
-        title = f"[Alert] {values.get('SUBS_NAME')}"
+        title = f"[Alert] {msg_params.get('SUBS_NAME')}"
+
+    subs_name = msg_params.get('SUBS_NAME', 'Notification configuration')
+    subs_config_link = f'<a href="{NUVLA_ENDPOINT}/ui/notifications">{subs_name}</a>'
     params = {
         'title': title,
-        'subs_description': values.get('SUBS_DESCRIPTION'),
+        'subs_description': msg_params.get('SUBS_DESCRIPTION'),
         'component_link': component_link,
-        'metric': metric,
-        'condition': condition.upper(),
-        'timestamp': timestamp_convert(values.get('TIMESTAMP')),
+        'metric': msg_params.get('METRIC'),
+        'timestamp': timestamp_convert(msg_params.get('TIMESTAMP')),
         'subs_config_link': subs_config_link,
         'header_img': f'{NUVLA_ENDPOINT}/{img_alert}',
         'current_year': str(datetime.now().year)
     }
-    if values.get('VALUE'):
-        params['condition'] = f"{values.get('CONDITION')} {values.get('CONDITION_VALUE')}"
-        params['value'] = values.get('VALUE')
+    if msg_params.get('CONDITION'):
+        params['condition'] = msg_params.get('CONDITION')
+        if 'VALUE' in msg_params:
+            params['condition'] = f"{msg_params.get('CONDITION')} {msg_params.get('CONDITION_VALUE')}"
+            params['value'] = msg_params.get('VALUE')
     return EMAIL_TEMPLATE.render(**params)
 
 
@@ -125,9 +127,9 @@ def send(server: smtplib.SMTP, recipients, subject, html, attempts=SEND_EMAIL_AT
         if i > 0:
             log_local.warning(f'Failed sending email: retry {i}')
             time.sleep(.5)
-            log_local.warning(f'Reconnecting to SMTP server...')
+            log_local.warning('Reconnecting to SMTP server...')
             server = get_smtp_server()
-            log_local.warning(f'Reconnecting to SMTP server... done.')
+            log_local.warning('Reconnecting to SMTP server... done.')
         try:
             resp = server.sendmail(server.user, recipients, msg.as_string())
             if resp:
@@ -160,14 +162,18 @@ def worker(workq: multiprocessing.Queue):
                 log_local.info(f'sent: {msg} to {recipients}')
             except smtplib.SMTPException as ex:
                 log_local.error(f'Failed sending email due to SMTP error: {ex}')
-                log_local.warning(f'Reconnecting to SMTP server...')
+                log_local.warning('Reconnecting to SMTP server...')
                 smtp_server = get_smtp_server()
-                log_local.warning(f'Reconnecting to SMTP server... done.')
+                log_local.warning('Reconnecting to SMTP server... done.')
             except Exception as ex:
                 log_local.error(f'Failed sending email: {ex}')
 
 
+def email_template(template_file=EMAIL_TEMPLATE_FILE):
+    return Template(open(template_file).read())
+
+
 if __name__ == "__main__":
-    EMAIL_TEMPLATE = Template(open(EMAIL_TEMPLATE_FILE).read())
+    EMAIL_TEMPLATE = email_template()
     set_smpt_params()
     main(worker, KAFKA_TOPIC, KAFKA_GROUP_ID)

@@ -26,73 +26,82 @@ def now_timestamp():
     return datetime.now().timestamp()
 
 
-def message_content(values: dict):
-    subs_name = lt.sub('&lt;', gt.sub('&gt;', values.get('SUBS_NAME', '')))
-    subs_config_txt = f'<{NUVLA_ENDPOINT}/ui/notifications|{subs_name}>'
+def message_content(msg_params: dict):
+    r_uri = msg_params.get('RESOURCE_URI')
+    link_text = msg_params.get('RESOURCE_NAME') or r_uri
+    component_link = f'<{NUVLA_ENDPOINT}/ui/{r_uri}|{link_text}>'
 
-    metric = values.get('METRIC')
-    if values.get('VALUE'):
-        cond_value = values.get('CONDITION_VALUE')
-        condition = f"{values.get('CONDITION')}"
-        criteria = f'_{metric}_ {gt.sub("&gt;", lt.sub("&lt;", condition))} *{cond_value}*'
-        value = f"*{values.get('VALUE')}*"
-    else:
-        condition = values.get('CONDITION', '').upper()
-        criteria = f'_{metric}_'
-        value = f'*{condition}*'
-
-    r_uri = values.get('RESOURCE_URI')
-    r_name = values.get('RESOURCE_NAME')
-    link_text = r_name or r_uri
-    component = f'<{NUVLA_ENDPOINT}/ui/{r_uri}|{link_text}>'
-
-    ts = timestamp_convert(values.get('TIMESTAMP'))
-
-    if values.get('RECOVERY', False):
+    if msg_params.get('RECOVERY', False):
         color = COLOR_OK
-        notif_title = "[OK] Notification"
+        notif_title = f"[OK] {msg_params.get('SUBS_NAME')}"
     else:
         color = COLOR_NOK
-        notif_title = "[Alert] Notification"
+        notif_title = f"[Alert] {msg_params.get('SUBS_NAME')}"
 
-    return {
-        "attachments": [
+    subs_name = lt.sub('&lt;', gt.sub('&gt;', msg_params.get('SUBS_NAME', '')))
+    subs_config_link = f'<{NUVLA_ENDPOINT}/ui/notifications|{subs_name}>'
+
+    # Order of the fields defines the layout of the message.
+
+    fields = [
+        {
+            "title": notif_title,
+            "value": subs_config_link,
+            "short": True
+        },
+        {
+            "title": "Affected resource(s)",
+            "value": component_link,
+            "short": True
+        }
+    ]
+
+    if msg_params.get('CONDITION'):
+        metric = msg_params.get('METRIC')
+        if 'VALUE' in msg_params:
+            cond_value = msg_params.get('CONDITION_VALUE')
+            condition = f"{msg_params.get('CONDITION')}"
+            criteria = f'_{metric}_ {gt.sub("&gt;", lt.sub("&lt;", condition))} *{cond_value}*'
+            value = f"*{msg_params.get('VALUE')}*"
+        else:
+            condition = msg_params.get('CONDITION', '').upper()
+            criteria = f'_{metric}_'
+            value = f'*{condition}*'
+
+        fields.extend([
             {
-                "color": color,
-                "author_name": "Nuvla",
-                "author_link": "https://sixsq.com",
-                "author_icon": "https://sixsq.com/img/logo/logo_sixsq.png",
-                "fields": [
-                    {
-                        "title": notif_title,
-                        "value": subs_config_txt,
-                        "short": True
-                    },
-                    {
-                        "title": "Affected resource",
-                        "value": component,
-                        "short": True
-                    },
-                    {
-                        "title": "Criteria",
-                        "value": criteria,
-                        "short": True
-                    },
-                    {
-                        "title": "Value",
-                        "value": value,
-                        "short": True
-                    },
-                    {
-                        "title": "Event Timestamp",
-                        "value": ts,
-                        "short": True
-                    }
-                ],
-                "ts": now_timestamp()
-            }
-        ]
-    }
+                "title": "Criteria",
+                "value": criteria,
+                "short": True
+            },
+            {
+                "title": "Value",
+                "value": value,
+                "short": True
+            }]
+        )
+
+    fields.append(
+        {
+            "title": "Event Timestamp",
+            "value": timestamp_convert(msg_params.get('TIMESTAMP')),
+            "short": True
+        }
+    )
+
+    attachments = [{
+            "color": color,
+            "author_name": "Nuvla.io",
+            "author_link": "https://nuvla.io",
+            "author_icon": "https://sixsq.com/assets/img/logo-sixsq.svg",
+            "fields": fields,
+            "footer": "https://sixsq.com",
+            "footer_icon": "https://sixsq.com/assets/img/logo-sixsq.svg",
+            "ts": now_timestamp()
+        }
+    ]
+
+    return {"attachments": attachments}
 
 
 def send_message(dest, message):

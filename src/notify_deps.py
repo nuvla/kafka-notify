@@ -51,7 +51,7 @@ def kafka_consumer(topic, bootstrap_servers, group_id, auto_offset_reset='latest
 
 def timestamp_convert(ts):
     return datetime.strptime(ts, '%Y-%m-%dT%H:%M:%SZ'). \
-        strftime('%a %d, %Y %H:%M:%S UTC')
+        strftime('%Y-%m-%d %H:%M:%S UTC')
 
 
 def main(worker, kafka_topic, group_id):
