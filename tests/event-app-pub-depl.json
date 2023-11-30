@@ -1,0 +1,13 @@
+{
+  "TEMPLATE": "app-pub",
+  "SUBS_ID": "subscription-config/891bdb6c-fb8c-41e6-9023-e317757365ab",
+  "DESTINATION": "https://hooks.slack.com/services/foo",
+  "SUBS_NAME": "App Published for Deployments",
+  "SUBS_DESCRIPTION": "App Published for Deployments",
+  "TRIGGER_RESOURCE_PATH": "apps/test/trigger-app-name",
+  "TRIGGER_RESOURCE_NAME": "published app name",
+  "RESOURCE_URI": "deployments?select=all&view=table&deployment=module/id='module/1-2-3-4-5' and deployment-set=null",
+  "RESOURCE_NAME": "Update Deployments",
+  "TIMESTAMP": "2023-11-29T13:22:26Z",
+  "RECOVERY": true
+}

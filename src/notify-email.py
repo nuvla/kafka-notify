@@ -16,8 +16,13 @@ from notify_deps import NUVLA_ENDPOINT
 
 log_local = get_logger('email')
 
-EMAIL_TEMPLATE_FILE = 'templates/base.html'
-EMAIL_TEMPLATE = Template('')
+EMAIL_TEMPLATE_DEFAULT_FILE = 'templates/default.html'
+EMAIL_TEMPLATE_APP_PUB_FILE = 'templates/app-pub.html'
+
+EMAIL_TEMPLATES = {
+    'default': Template('dummy'),
+    'app-pub': Template('dummy'),
+}
 
 NUVLA_API_LOCAL = 'http://api:8200'
 
@@ -41,7 +46,7 @@ def get_nuvla_config():
     return resp.json()
 
 
-def set_smpt_params():
+def set_smtp_params():
     global SMTP_HOST, SMTP_USER, SMTP_PASSWORD, SMTP_PORT, SMTP_SSL
     try:
         if 'SMTP_HOST' in os.environ:
@@ -84,23 +89,34 @@ def get_smtp_server(debug_level=0) -> smtplib.SMTP:
     return server
 
 
+def get_email_template(msg_params: dict) -> Template:
+    if 'TEMPLATE' not in msg_params:
+        return EMAIL_TEMPLATES['default']
+    tmpl_name = msg_params.get('TEMPLATE', 'default')
+    template = EMAIL_TEMPLATES.get(tmpl_name)
+    if template is None:
+        log_local.warning('Failed to find email template: %s', tmpl_name)
+        template = EMAIL_TEMPLATES['default']
+    return template
+
+
 def html_content(msg_params: dict):
-    log_local.info(f'msg_params: {msg_params}')
     r_uri = msg_params.get('RESOURCE_URI')
     link_text = msg_params.get('RESOURCE_NAME') or r_uri
     component_link = f'<a href="{NUVLA_ENDPOINT}/ui/{r_uri}">{link_text}</a>'
 
     if msg_params.get('RECOVERY', False):
         img_alert = IMG_ALERT_OK
-        title = f"[OK] {msg_params.get('SUBS_NAME')}"
+        notif_title = f"[OK] {msg_params.get('SUBS_NAME')}"
     else:
         img_alert = IMG_ALERT_NOK
-        title = f"[Alert] {msg_params.get('SUBS_NAME')}"
+        notif_title = f"[Alert] {msg_params.get('SUBS_NAME')}"
 
-    subs_name = msg_params.get('SUBS_NAME', 'Notification configuration')
+    subs_name = 'Notification configuration'
     subs_config_link = f'<a href="{NUVLA_ENDPOINT}/ui/notifications">{subs_name}</a>'
+
     params = {
-        'title': title,
+        'title': notif_title,
         'subs_description': msg_params.get('SUBS_DESCRIPTION'),
         'component_link': component_link,
         'metric': msg_params.get('METRIC'),
@@ -109,12 +125,20 @@ def html_content(msg_params: dict):
         'header_img': f'{NUVLA_ENDPOINT}/{img_alert}',
         'current_year': str(datetime.now().year)
     }
+
+    if 'TRIGGER_RESOURCE_PATH' in msg_params:
+        resource_path = msg_params.get('TRIGGER_RESOURCE_PATH')
+        resource_name = msg_params.get('TRIGGER_RESOURCE_NAME')
+        params['trigger_link'] = \
+            f'<a href="{NUVLA_ENDPOINT}/ui/{resource_path}">{resource_name}</a>'
+
     if msg_params.get('CONDITION'):
         params['condition'] = msg_params.get('CONDITION')
         if 'VALUE' in msg_params:
             params['condition'] = f"{msg_params.get('CONDITION')} {msg_params.get('CONDITION_VALUE')}"
             params['value'] = msg_params.get('VALUE')
-    return EMAIL_TEMPLATE.render(**params)
+
+    return get_email_template(msg_params).render(**params)
 
 
 def send(server: smtplib.SMTP, recipients, subject, html, attempts=SEND_EMAIL_ATTEMPTS):
@@ -169,11 +193,17 @@ def worker(workq: multiprocessing.Queue):
                 log_local.error(f'Failed sending email: {ex}')
 
 
-def email_template(template_file=EMAIL_TEMPLATE_FILE):
+def email_template(template_file=EMAIL_TEMPLATE_DEFAULT_FILE):
     return Template(open(template_file).read())
 
 
+def init_email_templates(default=EMAIL_TEMPLATE_DEFAULT_FILE,
+                         app_pub=EMAIL_TEMPLATE_APP_PUB_FILE):
+    EMAIL_TEMPLATES['default'] = email_template(default)
+    EMAIL_TEMPLATES['app-pub'] = email_template(app_pub)
+
+
 if __name__ == "__main__":
-    EMAIL_TEMPLATE = email_template()
-    set_smpt_params()
+    init_email_templates()
+    set_smtp_params()
     main(worker, KAFKA_TOPIC, KAFKA_GROUP_ID)

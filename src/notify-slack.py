@@ -45,16 +45,28 @@ def message_content(msg_params: dict):
 
     fields = [
         {
-            "title": notif_title,
-            "value": subs_config_link,
-            "short": True
-        },
-        {
-            "title": "Affected resource(s)",
-            "value": component_link,
-            "short": True
+            'title': notif_title,
+            'value': subs_config_link,
+            'short': True
         }
     ]
+
+    if 'TRIGGER_RESOURCE_PATH' in msg_params:
+        resource_path = msg_params.get('TRIGGER_RESOURCE_PATH')
+        resource_name = msg_params.get('TRIGGER_RESOURCE_NAME')
+        trigger_link = \
+            f'<{NUVLA_ENDPOINT}/ui/{resource_path}|{resource_name}>'
+        fields.append({
+            'title': 'Application was published',
+            'value': trigger_link,
+            'short': True
+        })
+
+    fields.append({
+        'title': 'Affected resource(s)',
+        'value': component_link,
+        'short': True
+    })
 
     if msg_params.get('CONDITION'):
         metric = msg_params.get('METRIC')
@@ -70,38 +82,38 @@ def message_content(msg_params: dict):
 
         fields.extend([
             {
-                "title": "Criteria",
-                "value": criteria,
-                "short": True
+                'title': 'Criteria',
+                'value': criteria,
+                'short': True
             },
             {
-                "title": "Value",
-                "value": value,
-                "short": True
+                'title': 'Value',
+                'value': value,
+                'short': True
             }]
         )
 
     fields.append(
         {
-            "title": "Event Timestamp",
-            "value": timestamp_convert(msg_params.get('TIMESTAMP')),
-            "short": True
+            'title': 'Event Timestamp',
+            'value': timestamp_convert(msg_params.get('TIMESTAMP')),
+            'short': True
         }
     )
 
     attachments = [{
-            "color": color,
-            "author_name": "Nuvla.io",
-            "author_link": "https://nuvla.io",
-            "author_icon": "https://sixsq.com/assets/img/logo-sixsq.svg",
-            "fields": fields,
-            "footer": "https://sixsq.com",
-            "footer_icon": "https://sixsq.com/assets/img/logo-sixsq.svg",
-            "ts": now_timestamp()
+            'color': color,
+            'author_name': 'Nuvla.io',
+            'author_link': 'https://nuvla.io',
+            'author_icon': 'https://sixsq.com/assets/img/logo-sixsq.svg',
+            'fields': fields,
+            'footer': 'https://sixsq.com',
+            'footer_icon': 'https://sixsq.com/assets/img/logo-sixsq.svg',
+            'ts': now_timestamp()
         }
     ]
 
-    return {"attachments": attachments}
+    return {'attachments': attachments}
 
 
 def send_message(dest, message):
