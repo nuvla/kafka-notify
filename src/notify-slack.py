@@ -38,8 +38,7 @@ def message_content(msg_params: dict):
         color = COLOR_NOK
         notif_title = f"[Alert] {msg_params.get('SUBS_NAME')}"
 
-    subs_name = lt.sub('&lt;', gt.sub('&gt;', msg_params.get('SUBS_NAME', '')))
-    subs_config_link = f'<{NUVLA_ENDPOINT}/ui/notifications|{subs_name}>'
+    subs_config_link = f'<{NUVLA_ENDPOINT}/ui/notifications|Notification configuration>'
 
     # Order of the fields defines the layout of the message.
 
