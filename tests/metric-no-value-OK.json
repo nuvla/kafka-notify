@@ -1,7 +1,7 @@
 {
   "SUBS_ID": "subscription-config/1-2-3-4-5",
-  "SUBS_NAME": "NE London off-line",
-  "SUBS_DESCRIPTION": "NE in London off-line",
+  "SUBS_NAME": "NE London online",
+  "SUBS_DESCRIPTION": "NE in London online",
   "RESOURCE_URI": "edge/1c2347d5-9463-47d4-a540-fffa3aad1367",
   "RESOURCE_NAME": "NE London",
   "METRIC": "NE online",
