@@ -49,7 +49,7 @@ def get_nuvla_config():
 def set_smtp_params():
     global SMTP_HOST, SMTP_USER, SMTP_PASSWORD, SMTP_PORT, SMTP_SSL
     try:
-        if 'SMTP_HOST' in os.environ:
+        if os.environ.get('SMTP_HOST') and len(os.environ.get('SMTP_HOST')) > 0:
             SMTP_HOST = os.environ['SMTP_HOST']
             SMTP_USER = os.environ['SMTP_USER']
             SMTP_PASSWORD = os.environ['SMTP_PASSWORD']
