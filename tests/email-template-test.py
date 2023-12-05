@@ -1,13 +1,17 @@
 #!/usr/bin/env python3
 
 import json
-from jinja2 import Template
+import os
 
 import notify_email
-
-notify_email.EMAIL_TEMPLATE = Template(open('../src/templates/base.html').read())
+notify_email.init_email_templates(
+    default=os.path.join('..', 'src', notify_email.EMAIL_TEMPLATE_DEFAULT_FILE),
+    app_pub=os.path.join('..', 'src', notify_email.EMAIL_TEMPLATE_APP_PUB_FILE))
 
 tests = [
+    'event-app-pub-app-bq.json',
+    'event-app-pub-depl-grp.json',
+    'event-app-pub-depl.json',
     'metric-no-value-NOK.json',
     'metric-no-value-OK.json',
     'metric-with-value-NOK.json',

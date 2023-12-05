@@ -1,13 +1,17 @@
 #!/usr/bin/env python3
 
-import sys
 import json
+import sys
+
 import notify_slack
 
 # Slack webhook URL
 dest = sys.argv[1]
 
 tests = [
+    'event-app-pub-app-bq.json',
+    'event-app-pub-depl-grp.json',
+    'event-app-pub-depl.json',
     'metric-no-value-NOK.json',
     'metric-no-value-OK.json',
     'metric-with-value-NOK.json',

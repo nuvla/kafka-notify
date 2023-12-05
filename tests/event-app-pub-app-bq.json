@@ -1,0 +1,13 @@
+{
+  "TEMPLATE": "app-pub",
+  "SUBS_ID": "subscription-config/891bdb6c-fb8c-41e6-9023-e317757365ab",
+  "DESTINATION": "https://hooks.slack.com/services/foo",
+  "SUBS_NAME": "App Published for App Bouquet",
+  "SUBS_DESCRIPTION": "Apps Published for App Bouquet",
+  "TRIGGER_RESOURCE_PATH": "apps/test/trigger-app-name",
+  "TRIGGER_RESOURCE_NAME": "published app name",
+  "RESOURCE_URI": "my-app-bqs/new-app-bq",
+  "RESOURCE_NAME": "Update App Bouquet: affected app name",
+  "TIMESTAMP": "2023-11-29T13:22:26Z",
+  "RECOVERY": true
+}

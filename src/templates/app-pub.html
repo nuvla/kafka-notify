@@ -1,5 +1,5 @@
 <!doctype html>
-<html>
+<html lang="en">
 <head>
     <meta name="viewport" content="width=device-width" />
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
@@ -364,7 +364,18 @@
                     </tr>
                     <tr>
                         <td class="wrapper">
-                            {{subs_description}}
+                            <table role="presentation" border="0" cellpadding="0" cellspacing="0">
+                                <tr>
+                                    <td>
+                                        <b>Application was published</b>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        {{trigger_link}}
+                                    </td>
+                                </tr>
+                            </table>
                         </td>
                     </tr>
                     <tr>
@@ -372,42 +383,20 @@
                             <table role="presentation" border="0" cellpadding="0" cellspacing="0">
                                 <tr>
                                     <td>
-                                        <b>Component</b>
+                                        <b>Affected resource(s)</b>
                                     </td>
-                                    <td>
-                                        <b>Metric</b>
-                                    </td>
-                                    <td>
-                                        <p><b>Condition</b></p>
-                                    </td>
-                                    {% if value is defined %}
-                                        <td>
-                                            <p><b>Value</b></p>
-                                        </td>
-                                    {% endif %}
                                 </tr>
                                 <tr>
                                     <td>
                                         {{component_link}}
                                     </td>
-                                    <td>
-                                        {{metric}}
-                                    </td>
-                                    <td>
-                                        {{condition}}
-                                    </td>
-                                    {% if value is defined %}
-                                        <td>
-                                            {{value}}
-                                        </td>
-                                    {% endif %}
                                 </tr>
                             </table>
                         </td>
                     </tr>
                     <tr>
                         <td class="wrapper">
-                            <p><b>Timestamp</b> {{timestamp}}</p>
+                            <p><b>Event Timestamp</b> {{timestamp}}</p>
                         </td>
                     </tr>
                     <tr>
