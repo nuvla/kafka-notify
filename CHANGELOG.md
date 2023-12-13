@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## [0.7.0] - 2023-12-13
+
+### Changed
+
+- Improved Slack and Email templates.
+- Fixed an issue with SMTP_HOST discovery.
+
 ### Changed
 
 ## [0.6.1] - 2023-01-06
