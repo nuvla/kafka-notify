@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## [0.7.1] - 2023-12-14
+
+### Changed
+
+- Fix for Slack and Email message on NE online/offline metric.
+
 ## [0.7.0] - 2023-12-13
 
 ### Changed
