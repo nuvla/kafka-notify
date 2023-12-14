@@ -1,0 +1,16 @@
+{
+  "SUBS_ID": "subscription-config/729b6182-e09a-4327-ad99-949c98d72278",
+  "SUBS_NAME": "ON/OFF all",
+  "SUBS_DESCRIPTION": "ON/OFF all",
+  "RESOURCE_URI": "edge/afbbc343-7759-48d6-9a8a-0f9baaabf552",
+  "RESOURCE_NAME": "test On/Off",
+  "RESOURCE_DESCRIPTION": null,
+  "TEMPLATE": null,
+  "TRIGGER_RESOURCE_PATH": null,
+  "TRIGGER_RESOURCE_NAME": null,
+  "METRIC": "NE online",
+  "CONDITION": "false",
+  "CONDITION_VALUE": "",
+  "VALUE": "",
+  "TIMESTAMP": "2023-12-14T08:13:04Z"
+}

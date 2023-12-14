@@ -95,7 +95,8 @@ def get_email_template(msg_params: dict) -> Template:
     tmpl_name = msg_params.get('TEMPLATE', 'default')
     template = EMAIL_TEMPLATES.get(tmpl_name)
     if template is None:
-        log_local.warning('Failed to find email template: %s', tmpl_name)
+        log_local.warning('Failed to find email template %s. Using default.',
+                          tmpl_name)
         template = EMAIL_TEMPLATES['default']
     return template
 
@@ -134,7 +135,7 @@ def html_content(msg_params: dict):
 
     if msg_params.get('CONDITION'):
         params['condition'] = msg_params.get('CONDITION')
-        if 'VALUE' in msg_params:
+        if msg_params.get('VALUE'):
             params['condition'] = f"{msg_params.get('CONDITION')} {msg_params.get('CONDITION_VALUE')}"
             params['value'] = msg_params.get('VALUE')
 

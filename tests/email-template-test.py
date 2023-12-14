@@ -15,7 +15,9 @@ tests = [
     'metric-no-value-NOK.json',
     'metric-no-value-OK.json',
     'metric-with-value-NOK.json',
-    'metric-with-value-OK.json'
+    'metric-with-value-OK.json',
+    'ne-online-true.json',
+    'ne-online-false.json'
 ]
 
 for t in tests:

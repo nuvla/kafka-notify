@@ -50,7 +50,7 @@ def message_content(msg_params: dict):
         }
     ]
 
-    if 'TRIGGER_RESOURCE_PATH' in msg_params:
+    if msg_params.get('TRIGGER_RESOURCE_PATH'):
         resource_path = msg_params.get('TRIGGER_RESOURCE_PATH')
         resource_name = msg_params.get('TRIGGER_RESOURCE_NAME')
         trigger_link = \
@@ -69,7 +69,7 @@ def message_content(msg_params: dict):
 
     if msg_params.get('CONDITION'):
         metric = msg_params.get('METRIC')
-        if 'VALUE' in msg_params:
+        if msg_params.get('VALUE'):
             cond_value = msg_params.get('CONDITION_VALUE')
             condition = f"{msg_params.get('CONDITION')}"
             criteria = f'_{metric}_ {gt.sub("&gt;", lt.sub("&lt;", condition))} *{cond_value}*'
