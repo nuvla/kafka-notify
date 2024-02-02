@@ -1,0 +1,8 @@
+{
+  "SUBS_NAME": "Notification Test",
+  "SUBS_DESCRIPTION": "Notification Test",
+  "RESOURCE_URI": "notifications-methods",
+  "RESOURCE_NAME": "my notification method",
+  "TIMESTAMP": "2023-11-29T13:22:26Z",
+  "RECOVERY": true
+}

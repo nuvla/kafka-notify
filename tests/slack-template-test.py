@@ -17,7 +17,8 @@ tests = [
     'metric-with-value-NOK.json',
     'metric-with-value-OK.json',
     'ne-online-true.json',
-    'ne-online-false.json'
+    'ne-online-false.json',
+    'notification-test.json'
 ]
 
 for t in tests:
