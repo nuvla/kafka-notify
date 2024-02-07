@@ -216,10 +216,7 @@ def init_email_templates(default=EMAIL_TEMPLATE_DEFAULT_FILE,
 if __name__ == "__main__":
     init_email_templates()
     set_smtp_params()
-<<<<<<< HEAD
-=======
     REGISTRY.unregister(PROCESS_COLLECTOR)
     ProcessCollector(namespace=NAMESPACE)
->>>>>>> 2164fe2 (Added prometheus client)
     start_http_server(prometheus_exporter_port())
     main(worker, KAFKA_TOPIC, KAFKA_GROUP_ID)
