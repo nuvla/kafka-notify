@@ -6,11 +6,12 @@ import multiprocessing
 import requests
 import os
 import re
+import shutil
 
 from notify_deps import get_logger, timestamp_convert, main
 from notify_deps import NUVLA_ENDPOINT, prometheus_exporter_port
-from metrics import NOTIFICATIONS_SENT, NOTIFICATIONS_ERROR, PROCESS_STATES, NAMESPACE
-from prometheus_client import start_http_server, PROCESS_COLLECTOR, REGISTRY, ProcessCollector
+from prometheus_client import start_http_server, multiprocess, CollectorRegistry
+from prometheus_client import Counter, Enum
 
 KAFKA_TOPIC = os.environ.get('KAFKA_TOPIC') or 'NOTIFICATIONS_SLACK_S'
 KAFKA_GROUP_ID = 'nuvla-notification-slack'
@@ -23,6 +24,26 @@ lt = re.compile('<')
 COLOR_OK = "#2C9442"
 COLOR_NOK = "#B70B0B"
 
+path = os.environ.get('PROMETHEUS_MULTIPROC_DIR')
+if os.path.exists(path):
+    shutil.rmtree(path)
+    os.mkdir(path)
+
+registry = CollectorRegistry()
+multiprocess.MultiProcessCollector(registry)
+
+PROCESS_STATES = Enum('process_states', 'State of the process', states=['idle', 'processing',
+                                                                        'error - recoverable', 'error - '
+                                                                                               'need restart']
+                      , namespace='kafka_notify', registry=registry)
+
+NOTIFICATIONS_SENT = Counter('notifications_sent', 'Number of notifications sent',
+                             ['type', 'name', 'endpoint'], namespace='kafka_notify',
+                             registry=registry)
+NOTIFICATIONS_ERROR = Counter('notifications_error',
+                              'Number of notifications that could not be sent due to error',
+                              ['type', 'name', 'endpoint', 'exception'], namespace='kafka_notify',
+                              registry=registry)
 
 def now_timestamp():
     return datetime.now().timestamp()
@@ -139,7 +160,5 @@ def worker(workq: multiprocessing.Queue):
 
 
 if __name__ == "__main__":
-    REGISTRY.unregister(PROCESS_COLLECTOR)
-    ProcessCollector(namespace=NAMESPACE)
     start_http_server(prometheus_exporter_port())
     main(worker, KAFKA_TOPIC, KAFKA_GROUP_ID)

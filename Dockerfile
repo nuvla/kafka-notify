@@ -12,6 +12,8 @@ COPY src/notify* /app/
 COPY src/metrics.py /app/
 COPY src/run.sh /app/
 COPY src/templates /app/templates
+RUN mkdir /app/prom_data
+ENV PROMETHEUS_MULTIPROC_DIR /app/prom_data
 
 WORKDIR /app
 EXPOSE 9140
