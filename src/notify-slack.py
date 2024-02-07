@@ -9,8 +9,8 @@ import re
 
 from notify_deps import get_logger, timestamp_convert, main
 from notify_deps import NUVLA_ENDPOINT, prometheus_exporter_port
-from metrics import NOTIFICATIONS_SENT, NOTIFICATIONS_ERROR, PROCESS_STATES
-from prometheus_client import start_http_server
+from metrics import NOTIFICATIONS_SENT, NOTIFICATIONS_ERROR, PROCESS_STATES, NAMESPACE
+from prometheus_client import start_http_server, PROCESS_COLLECTOR, REGISTRY, ProcessCollector
 
 KAFKA_TOPIC = os.environ.get('KAFKA_TOPIC') or 'NOTIFICATIONS_SLACK_S'
 KAFKA_GROUP_ID = 'nuvla-notification-slack'
@@ -139,5 +139,7 @@ def worker(workq: multiprocessing.Queue):
 
 
 if __name__ == "__main__":
+    REGISTRY.unregister(PROCESS_COLLECTOR)
+    ProcessCollector(namespace=NAMESPACE)
     start_http_server(prometheus_exporter_port())
     main(worker, KAFKA_TOPIC, KAFKA_GROUP_ID)

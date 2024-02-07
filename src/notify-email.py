@@ -12,8 +12,8 @@ from datetime import datetime
 
 from notify_deps import get_logger, timestamp_convert, main
 from notify_deps import NUVLA_ENDPOINT, prometheus_exporter_port
-from metrics import NOTIFICATIONS_SENT, NOTIFICATIONS_ERROR, PROCESS_STATES
-from prometheus_client import start_http_server
+from metrics import NOTIFICATIONS_SENT, NOTIFICATIONS_ERROR, PROCESS_STATES, NAMESPACE
+from prometheus_client import start_http_server, PROCESS_COLLECTOR, REGISTRY, ProcessCollector
 
 
 log_local = get_logger('email')
@@ -216,5 +216,10 @@ def init_email_templates(default=EMAIL_TEMPLATE_DEFAULT_FILE,
 if __name__ == "__main__":
     init_email_templates()
     set_smtp_params()
+<<<<<<< HEAD
+=======
+    REGISTRY.unregister(PROCESS_COLLECTOR)
+    ProcessCollector(namespace=NAMESPACE)
+>>>>>>> 2164fe2 (Added prometheus client)
     start_http_server(prometheus_exporter_port())
     main(worker, KAFKA_TOPIC, KAFKA_GROUP_ID)
