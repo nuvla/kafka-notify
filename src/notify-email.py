@@ -189,7 +189,7 @@ def worker(workq: multiprocessing.Queue):
                 html = html_content(msg.value)
                 send(smtp_server, recipients, subject, html)
                 log_local.info(f'sent: {msg} to {recipients}')
-                NOTIFICATIONS_SENT.labels('email', r_name, ','.join(recipients)).inc()
+                NOTIFICATIONS_SENT.labels('email', f'{r_name or r_id}', ','.join(recipients)).inc()
             except smtplib.SMTPException as ex:
                 log_local.error(f'Failed sending email due to SMTP error: {ex}')
                 log_local.warning('Reconnecting to SMTP server...')
