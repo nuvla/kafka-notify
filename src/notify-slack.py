@@ -45,6 +45,7 @@ NOTIFICATIONS_ERROR = Counter('notifications_error',
                               ['type', 'name', 'endpoint', 'exception'], namespace='kafka_notify',
                               registry=registry)
 
+
 def now_timestamp():
     return datetime.now().timestamp()
 
@@ -124,15 +125,15 @@ def message_content(msg_params: dict):
     )
 
     attachments = [{
-            'color': color,
-            'author_name': 'Nuvla.io',
-            'author_link': 'https://nuvla.io',
-            'author_icon': 'https://sixsq.com/assets/img/logo-sixsq.svg',
-            'fields': fields,
-            'footer': 'https://sixsq.com',
-            'footer_icon': 'https://sixsq.com/assets/img/logo-sixsq.svg',
-            'ts': now_timestamp()
-        }
+        'color': color,
+        'author_name': 'Nuvla.io',
+        'author_link': 'https://nuvla.io',
+        'author_icon': 'https://sixsq.com/assets/img/logo-sixsq.svg',
+        'fields': fields,
+        'footer': 'https://sixsq.com',
+        'footer_icon': 'https://sixsq.com/assets/img/logo-sixsq.svg',
+        'ts': now_timestamp()
+    }
     ]
 
     return {'attachments': attachments}
