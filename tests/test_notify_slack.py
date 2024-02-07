@@ -4,7 +4,7 @@ from unittest.mock import Mock
 import shutil
 from prometheus_client import multiprocess
 
-os.environ['PROMETHEUS_MULTIPROC_DIR'] = '/tmp/test'
+os.environ['PROMETHEUS_MULTIPROC_DIR'] = ''
 os.path.exists = Mock(return_value=True)
 os.mkdir = Mock()
 shutil.rmtree = Mock()
