@@ -9,6 +9,7 @@ import re
 
 from notify_deps import get_logger, timestamp_convert, main
 from notify_deps import NUVLA_ENDPOINT
+from src.metrics import NOTIFICATIONS_SENT, NOTIFICATIONS_ERROR
 from prometheus_client import start_http_server
 
 KAFKA_TOPIC = os.environ.get('KAFKA_TOPIC') or 'NOTIFICATIONS_SLACK_S'
@@ -128,7 +129,9 @@ def worker(workq: multiprocessing.Queue):
             resp = send_message(dest, message_content(msg.value))
             if not resp.ok:
                 log_local.error(f'Failed sending {msg} to {dest}: {resp.text}')
+                NOTIFICATIONS_ERROR.labels('slack', msg.value['SUBS_NAME'], dest, resp.text).inc()
             else:
+                NOTIFICATIONS_SENT.labels('slack', msg.value['SUBS_NAME'], dest).inc()
                 log_local.info(f'sent: {msg} to {dest}')
 
 

@@ -12,7 +12,7 @@ from datetime import datetime
 
 from notify_deps import get_logger, timestamp_convert, main
 from notify_deps import NUVLA_ENDPOINT
-from metrics import NOTIFICATIONS_SENT, NOTIFICATIONS_ERROR
+from src.metrics import NOTIFICATIONS_SENT, NOTIFICATIONS_ERROR
 from prometheus_client import start_http_server
 
 
