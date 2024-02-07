@@ -135,10 +135,10 @@ def worker(workq: multiprocessing.Queue):
                 log_local.error(f'Failed sending {msg} to {dest}: {resp.text}')
                 PROCESS_STATES.state('error - recoverable')
                 NOTIFICATIONS_ERROR.labels('slack',
-                                           f'{msg.value.get("NAME") or msg.value["RESOURCE_ID"] or msg.value["SUBS_NAME"]}'
+                                           f'{msg.value.get("NAME") or msg.value["SUBS_NAME"]}'
                                            , dest, resp.text).inc()
             else:
-                NOTIFICATIONS_SENT.labels('slack', f'{msg.value.get("NAME") or msg.value["RESOURCE_ID"] or msg.value["SUBS_NAME"]}'
+                NOTIFICATIONS_SENT.labels('slack', f'{msg.value.get("NAME") or msg.value["SUBS_NAME"]}'
                                           , dest).inc()
                 log_local.info(f'sent: {msg} to {dest}')
 
