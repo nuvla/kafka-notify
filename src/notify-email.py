@@ -12,7 +12,7 @@ from datetime import datetime
 
 from notify_deps import get_logger, timestamp_convert, main
 from notify_deps import NUVLA_ENDPOINT
-from src.metrics import NOTIFICATIONS_SENT, NOTIFICATIONS_ERROR
+from src.metrics import NOTIFICATIONS_SENT, NOTIFICATIONS_ERROR, PROCESS_STATES
 from prometheus_client import start_http_server
 
 
@@ -174,7 +174,9 @@ def get_recipients(v: dict):
 def worker(workq: multiprocessing.Queue):
     smtp_server = get_smtp_server()
     while True:
+        PROCESS_STATES.state('idle')
         msg = workq.get()
+        PROCESS_STATES.state('processing')
         if msg:
             recipients = get_recipients(msg.value)
             if len(recipients) == 0:
@@ -194,9 +196,11 @@ def worker(workq: multiprocessing.Queue):
                 smtp_server = get_smtp_server()
                 log_local.warning('Reconnecting to SMTP server... done.')
                 NOTIFICATIONS_ERROR.labels('email', r_name, ','.join(recipients), type(ex)).inc()
+                PROCESS_STATES.state('error - recoverable')
             except Exception as ex:
                 log_local.error(f'Failed sending email: {ex}')
                 NOTIFICATIONS_ERROR.labels('email', r_name, ','.join(recipients), type(ex)).inc()
+                PROCESS_STATES.state('error - recoverable')
 
 
 def email_template(template_file=EMAIL_TEMPLATE_DEFAULT_FILE):
