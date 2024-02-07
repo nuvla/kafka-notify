@@ -8,7 +8,6 @@ import time
 from datetime import datetime
 from kafka import KafkaConsumer
 
-
 log_formatter = logging.Formatter(
     '%(asctime)s - %(name)s - %(process)d - %(levelname)s - %(message)s')
 stdout_handler = logging.StreamHandler(sys.stdout)
@@ -37,6 +36,8 @@ NUVLA_ENDPOINT = (os.environ.get('NUVLA_ENDPOINT') or 'https://nuvla.io').rstrip
 
 work_queue = multiprocessing.Queue()
 
+DEFAULT_PROMETHEUS_EXPORTER_PORT = 9140
+
 
 def kafka_consumer(topic, bootstrap_servers, group_id, auto_offset_reset='latest'):
     consumer = KafkaConsumer(topic,
@@ -54,6 +55,10 @@ def timestamp_convert(ts):
         strftime('%Y-%m-%d %H:%M:%S UTC')
 
 
+def prometheus_exporter_port():
+    return int(os.environ.get('PROMETHEUS_EXPORTER_PORT', DEFAULT_PROMETHEUS_EXPORTER_PORT))
+
+
 def main(worker, kafka_topic, group_id):
     pool = multiprocessing.Pool(5, worker, (work_queue,))
     for msg in kafka_consumer(kafka_topic, KAFKA_BOOTSTRAP_SERVERS, group_id=group_id):
@@ -68,4 +73,3 @@ def main(worker, kafka_topic, group_id):
     work_queue.join_thread()
     pool.close()
     pool.join()
-

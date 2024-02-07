@@ -11,7 +11,7 @@ from jinja2 import Template
 from datetime import datetime
 
 from notify_deps import get_logger, timestamp_convert, main
-from notify_deps import NUVLA_ENDPOINT
+from notify_deps import NUVLA_ENDPOINT, prometheus_exporter_port
 from metrics import NOTIFICATIONS_SENT, NOTIFICATIONS_ERROR, PROCESS_STATES
 from prometheus_client import start_http_server
 
@@ -216,5 +216,5 @@ def init_email_templates(default=EMAIL_TEMPLATE_DEFAULT_FILE,
 if __name__ == "__main__":
     init_email_templates()
     set_smtp_params()
-    start_http_server(9128)
+    start_http_server(prometheus_exporter_port())
     main(worker, KAFKA_TOPIC, KAFKA_GROUP_ID)

@@ -8,7 +8,7 @@ import os
 import re
 
 from notify_deps import get_logger, timestamp_convert, main
-from notify_deps import NUVLA_ENDPOINT
+from notify_deps import NUVLA_ENDPOINT, prometheus_exporter_port
 from metrics import NOTIFICATIONS_SENT, NOTIFICATIONS_ERROR, PROCESS_STATES
 from prometheus_client import start_http_server
 
@@ -139,5 +139,5 @@ def worker(workq: multiprocessing.Queue):
 
 
 if __name__ == "__main__":
-    start_http_server(9129)
+    start_http_server(prometheus_exporter_port())
     main(worker, KAFKA_TOPIC, KAFKA_GROUP_ID)
