@@ -12,6 +12,8 @@ from datetime import datetime
 
 from notify_deps import get_logger, timestamp_convert, main
 from notify_deps import NUVLA_ENDPOINT
+from metrics import NOTIFICATIONS_SENT, NOTIFICATIONS_ERROR
+from prometheus_client import start_http_server
 
 
 log_local = get_logger('email')
@@ -185,13 +187,16 @@ def worker(workq: multiprocessing.Queue):
                 html = html_content(msg.value)
                 send(smtp_server, recipients, subject, html)
                 log_local.info(f'sent: {msg} to {recipients}')
+                NOTIFICATIONS_SENT.labels('email', r_name, ','.join(recipients)).inc()
             except smtplib.SMTPException as ex:
                 log_local.error(f'Failed sending email due to SMTP error: {ex}')
                 log_local.warning('Reconnecting to SMTP server...')
                 smtp_server = get_smtp_server()
                 log_local.warning('Reconnecting to SMTP server... done.')
+                NOTIFICATIONS_ERROR.labels('email', r_name, ','.join(recipients), type(ex)).inc()
             except Exception as ex:
                 log_local.error(f'Failed sending email: {ex}')
+                NOTIFICATIONS_ERROR.labels('email', r_name, ','.join(recipients), type(ex)).inc()
 
 
 def email_template(template_file=EMAIL_TEMPLATE_DEFAULT_FILE):
@@ -207,4 +212,5 @@ def init_email_templates(default=EMAIL_TEMPLATE_DEFAULT_FILE,
 if __name__ == "__main__":
     init_email_templates()
     set_smtp_params()
+    start_http_server(9128)
     main(worker, KAFKA_TOPIC, KAFKA_GROUP_ID)
