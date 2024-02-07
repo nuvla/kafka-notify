@@ -9,7 +9,7 @@ import re
 
 from notify_deps import get_logger, timestamp_convert, main
 from notify_deps import NUVLA_ENDPOINT
-from src.metrics import NOTIFICATIONS_SENT, NOTIFICATIONS_ERROR, PROCESS_STATES
+from metrics import NOTIFICATIONS_SENT, NOTIFICATIONS_ERROR, PROCESS_STATES
 from prometheus_client import start_http_server
 
 KAFKA_TOPIC = os.environ.get('KAFKA_TOPIC') or 'NOTIFICATIONS_SLACK_S'
