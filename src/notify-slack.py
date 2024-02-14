@@ -130,16 +130,22 @@ def worker(workq: multiprocessing.Queue):
         PROCESS_STATES.state('processing')
         if msg:
             dest = msg.value['DESTINATION']
-            resp = send_message(dest, message_content(msg.value))
+            try:
+                resp = send_message(dest, message_content(msg.value))
+            except requests.exceptions.RequestException as ex:
+                log_local.error(f'Failed sending {msg} to {dest}: {ex}')
+                PROCESS_STATES.state('error - recoverable')
+                NOTIFICATIONS_ERROR.labels('slack', f'{msg.value.get("NAME") or msg.value["SUBS_NAME"]}',
+                                           dest, type(ex)).inc()
+                continue
             if not resp.ok:
                 log_local.error(f'Failed sending {msg} to {dest}: {resp.text}')
                 PROCESS_STATES.state('error - recoverable')
-                NOTIFICATIONS_ERROR.labels('slack',
-                                           f'{msg.value.get("NAME") or msg.value["SUBS_NAME"]}'
-                                           , dest, resp.text).inc()
+                NOTIFICATIONS_ERROR.labels('slack', f'{msg.value.get("NAME") or msg.value["SUBS_NAME"]}',
+                                           dest, resp.text).inc()
             else:
-                NOTIFICATIONS_SENT.labels('slack', f'{msg.value.get("NAME") or msg.value["SUBS_NAME"]}'
-                                          , dest).inc()
+                NOTIFICATIONS_SENT.labels('slack', f'{msg.value.get("NAME") or msg.value["SUBS_NAME"]}',
+                                          dest).inc()
                 log_local.info(f'sent: {msg} to {dest}')
 
 
