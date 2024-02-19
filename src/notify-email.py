@@ -9,7 +9,6 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from jinja2 import Template
 from datetime import datetime
-import shutil
 
 from notify_deps import get_logger, timestamp_convert, main
 from notify_deps import NUVLA_ENDPOINT, prometheus_exporter_port
@@ -144,26 +143,29 @@ def html_content(msg_params: dict):
     return get_email_template(msg_params).render(**params)
 
 
-def send(server: smtplib.SMTP, recipients, subject, html, attempts=SEND_EMAIL_ATTEMPTS):
+def send(server: smtplib.SMTP, recipients, subject, html, attempts=SEND_EMAIL_ATTEMPTS,
+         sleep_interval=0.5):
     msg = MIMEMultipart('alternative')
     msg['Subject'] = subject
     msg['From'] = f'Nuvla <{server.user}>'
     msg['To'] = ', '.join(recipients)
     msg.attach(MIMEText(html, 'html', 'utf-8'))
     for i in range(attempts):
-        if i > 0:
-            log_local.warning(f'Failed sending email: retry {i}')
-            time.sleep(.5)
-            log_local.warning('Reconnecting to SMTP server...')
-            server = get_smtp_server()
-            log_local.warning('Reconnecting to SMTP server... done.')
         try:
             resp = server.sendmail(server.user, recipients, msg.as_string())
             if resp:
                 log_local.error(f'SMTP failed to deliver email to: {resp}')
             return
+        except smtplib.SMTPServerDisconnected:
+            if i < attempts - 1:  # no need to sleep on the last iteration
+                time.sleep(sleep_interval)
+                log_local.warning('Reconnecting to SMTP server...')
+                server = get_smtp_server()
+                log_local.warning('Reconnecting to SMTP server... done.')
         except smtplib.SMTPException as ex:
             log_local.error(f'Failed sending email due to SMTP error: {ex}')
+            NOTIFICATIONS_ERROR.labels('email', subject, ','.join(recipients), type(ex)).inc()
+            PROCESS_STATES.state('error - recoverable')
     raise SendFailedMaxAttempts(f'Failed sending email after {attempts} attempts.')
 
 
