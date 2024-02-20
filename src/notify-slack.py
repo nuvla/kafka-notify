@@ -6,7 +6,6 @@ import multiprocessing
 import requests
 import os
 import re
-import shutil
 
 from notify_deps import get_logger, timestamp_convert, main
 from notify_deps import NUVLA_ENDPOINT, prometheus_exporter_port
@@ -23,7 +22,6 @@ lt = re.compile('<')
 
 COLOR_OK = "#2C9442"
 COLOR_NOK = "#B70B0B"
-
 
 
 def now_timestamp():
