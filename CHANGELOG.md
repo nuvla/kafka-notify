@@ -4,6 +4,8 @@
 
 ### Add
 
+## [0.8.0] - 2024-02-20
+
 - Expose internal business metrics for Prometheus scraping.
 
 ## [0.7.1] - 2023-12-14
