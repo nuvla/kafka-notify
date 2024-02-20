@@ -8,7 +8,9 @@ import os
 import re
 
 from notify_deps import get_logger, timestamp_convert, main
-from notify_deps import NUVLA_ENDPOINT
+from notify_deps import NUVLA_ENDPOINT, prometheus_exporter_port
+from prometheus_client import start_http_server
+from metrics import PROCESS_STATES, NOTIFICATIONS_SENT, NOTIFICATIONS_ERROR, registry
 
 KAFKA_TOPIC = os.environ.get('KAFKA_TOPIC') or 'NOTIFICATIONS_SLACK_S'
 KAFKA_GROUP_ID = 'nuvla-notification-slack'
@@ -101,15 +103,15 @@ def message_content(msg_params: dict):
     )
 
     attachments = [{
-            'color': color,
-            'author_name': 'Nuvla.io',
-            'author_link': 'https://nuvla.io',
-            'author_icon': 'https://sixsq.com/assets/img/logo-sixsq.svg',
-            'fields': fields,
-            'footer': 'https://sixsq.com',
-            'footer_icon': 'https://sixsq.com/assets/img/logo-sixsq.svg',
-            'ts': now_timestamp()
-        }
+        'color': color,
+        'author_name': 'Nuvla.io',
+        'author_link': 'https://nuvla.io',
+        'author_icon': 'https://sixsq.com/assets/img/logo-sixsq.svg',
+        'fields': fields,
+        'footer': 'https://sixsq.com',
+        'footer_icon': 'https://sixsq.com/assets/img/logo-sixsq.svg',
+        'ts': now_timestamp()
+    }
     ]
 
     return {'attachments': attachments}
@@ -121,15 +123,30 @@ def send_message(dest, message):
 
 def worker(workq: multiprocessing.Queue):
     while True:
+        PROCESS_STATES.state('idle')
         msg = workq.get()
+        PROCESS_STATES.state('processing')
         if msg:
             dest = msg.value['DESTINATION']
-            resp = send_message(dest, message_content(msg.value))
+            try:
+                resp = send_message(dest, message_content(msg.value))
+            except requests.exceptions.RequestException as ex:
+                log_local.error(f'Failed sending {msg} to {dest}: {ex}')
+                PROCESS_STATES.state('error - recoverable')
+                NOTIFICATIONS_ERROR.labels('slack', f'{msg.value.get("NAME") or msg.value["SUBS_NAME"]}',
+                                           dest, type(ex)).inc()
+                continue
             if not resp.ok:
                 log_local.error(f'Failed sending {msg} to {dest}: {resp.text}')
+                PROCESS_STATES.state('error - recoverable')
+                NOTIFICATIONS_ERROR.labels('slack', f'{msg.value.get("NAME") or msg.value["SUBS_NAME"]}',
+                                           dest, resp.text).inc()
             else:
+                NOTIFICATIONS_SENT.labels('slack', f'{msg.value.get("NAME") or msg.value["SUBS_NAME"]}',
+                                          dest).inc()
                 log_local.info(f'sent: {msg} to {dest}')
 
 
 if __name__ == "__main__":
+    start_http_server(prometheus_exporter_port(), registry=registry)
     main(worker, KAFKA_TOPIC, KAFKA_GROUP_ID)

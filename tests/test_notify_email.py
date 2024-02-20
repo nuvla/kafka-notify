@@ -1,6 +1,15 @@
 import os
 import unittest
+from unittest.mock import Mock
+import shutil
+from prometheus_client import multiprocess
 
+os.environ['PROMETHEUS_MULTIPROC_DIR'] = ''
+os.path.exists = Mock(return_value=True)
+os.mkdir = Mock()
+shutil.rmtree = Mock()
+
+multiprocess.MultiProcessCollector = Mock()
 import notify_email
 from notify_email import get_recipients, html_content, email_template
 
