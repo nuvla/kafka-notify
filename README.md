@@ -1,3 +1,10 @@
+## Release process
+
+The release process is automated using GitHub Actions. The release process gets
+triggered when a new tag is pushed to the repository. The release process is 
+defined in the `.github/workflows/release.yml` file.
+
+
 ## Nuvla specific scripts for notifiation of users
 
 Kafka topics are used as the source of the messages.
