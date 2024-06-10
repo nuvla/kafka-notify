@@ -9,7 +9,6 @@ import re
 from paho.mqtt import client as mqtt
 from paho.mqtt import publish as publish
 
-# import paho.mqtt as mqtt
 
 from notify_deps import get_logger, timestamp_convert, main
 from notify_deps import NUVLA_ENDPOINT, prometheus_exporter_port
@@ -26,11 +25,6 @@ lt = re.compile('<')
 
 COLOR_OK = "#2C9442"
 COLOR_NOK = "#B70B0B"
-
-## mqtt_server = os.environ.get('MQTT_SERVER') or 'localhost'
-## mqtt_server = os.environ.get('MQTT_SERVER') or '192.168.1.234'
-mqtt_topic = "notifications_from_nuvla"
-
 
 def now_timestamp():
     return datetime.now().timestamp()
