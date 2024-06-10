@@ -127,7 +127,7 @@ def send_mqtt_notification(topic: str, payload, mqtt_server: str):
 def send_message(topic: str, message, mqtt_server: str):
     return send_mqtt_notification(topic, json.dumps(message), mqtt_server)
 
-def extract_destination(dest: str):
+def extract_destination(dest: str) -> tuple:
     # split on the first colon
     hostname = dest.split(':', 1)[0]
     if len(dest.split(':')) == 1:
@@ -145,15 +145,18 @@ def worker(workq: multiprocessing.Queue):
             log_local.info(f"Received message. key:\n{msg.key}\n")
             log_local.info(f"Received message. value:\n{msg.value}\n")
             try:
-                send_message(msg.value.get('MQTT_TOPIC'), message_content(msg.value), msg.value.get('DESTINATION'))
+                send_message(msg.value.get('MQTT_TOPIC'), \
+                             message_content(msg.value), msg.value.get('DESTINATION'))
             except requests.exceptions.RequestException as ex:
                 log_local.error(f'Failed sending {msg} to {mqtt_server}: {ex}')
                 PROCESS_STATES.state('error - recoverable')
-                NOTIFICATIONS_ERROR.labels('mqtt', f'{msg.value.get("NAME") or msg.value["SUBS_NAME"]}',
+                NOTIFICATIONS_ERROR.labels('mqtt', f'{msg.value.get("NAME") \
+                                                      or msg.value["SUBS_NAME"]}',
                                            mqtt_topic, type(ex)).inc()
                 continue
             
-            log_local.info(f'sent: {msg} to {msg.value.get('DESTINATION')} on {msg.value.get('MQTT_TOPIC')}')
+            log_local.info(f'sent: {msg} to \{msg.value.get('DESTINATION')} \
+                           on {msg.value.get('MQTT_TOPIC')}')
 
 
 if __name__ == "__main__":
