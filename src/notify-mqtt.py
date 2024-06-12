@@ -117,8 +117,8 @@ def worker(workq: multiprocessing.Queue):
                                            mqtt_topic, type(ex)).inc()
                 continue
             
-            log_local.info(f'sent: {msg} to {msg.value.get('DESTINATION')} \
-                           on {msg.value.get('MQTT_TOPIC')}')
+            log_local.info(f"sent: {msg} to {msg.value.get('DESTINATION')} \
+                           on {msg.value.get('MQTT_TOPIC')}")
 
 
 if __name__ == "__main__":
