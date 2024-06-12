@@ -101,7 +101,7 @@ def worker(workq: multiprocessing.Queue):
             try:
                 send_message(message_content(msg.value), msg.value.get('DESTINATION'))
             except Exception as ex:
-                log_local.error(f'Failed sending {msg} to {msg.value.get('DESTINATION')}: {ex}')
+                log_local.error(f"Failed sending {msg} to {msg.value.get('DESTINATION')}: {ex}")
                 PROCESS_STATES.state('error - recoverable')
                 NOTIFICATIONS_ERROR.labels('mqtt', f'{msg.value.get("NAME") or msg.value["SUBS_NAME"]}', msg.value.get('MQTT_TOPIC'), type(ex)).inc()
                 continue
