@@ -29,7 +29,7 @@ COLOR_NOK = "#B70B0B"
 def now_timestamp():
     return datetime.now().timestamp()
 
-def message_content(msg_params: dict):
+def message_content(msg_params: dict) -> dict:
     log_local.info(f"Building message content for {msg_params}")
 
     r_uri = msg_params.get('RESOURCE_URI')
@@ -63,7 +63,6 @@ def message_content(msg_params: dict):
         log_local.info(f"Field: {ffield}, Value: {msg_params.get(ffield)}")
         if msg_params.get(ffield):
             outfield[ffield] = msg_params.get(ffield)
-            # outfield.append({ffield: msg_params.get(ffield),})
 
     # Order of the fields defines the layout of the message
     if msg_params.get('TRIGGER_RESOURCE_PATH'):
@@ -71,6 +70,7 @@ def message_content(msg_params: dict):
         resource_name = msg_params.get('TRIGGER_RESOURCE_NAME')
         trigger_link = \
             f'<{NUVLA_ENDPOINT}/ui/{resource_path}|{resource_name}>'
+        outfield['TRIGGER_LINK'] = trigger_link
         
     outfield['COMPONENT_LINK'] = component_link
     outfield['ts'] = now_timestamp()
