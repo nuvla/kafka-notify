@@ -5,9 +5,7 @@ from datetime import datetime
 import multiprocessing
 import requests
 import os
-import re
-from paho.mqtt import client as mqtt
-from paho.mqtt import publish as publish
+from paho.mqtt import publish as mqtt_publish
 
 
 from notify_deps import get_logger, timestamp_convert, main
@@ -15,16 +13,10 @@ from notify_deps import NUVLA_ENDPOINT, prometheus_exporter_port
 from prometheus_client import start_http_server
 from metrics import PROCESS_STATES, NOTIFICATIONS_SENT, NOTIFICATIONS_ERROR, registry
 
-KAFKA_TOPIC = os.environ.get('KAFKA_TOPIC') or 'NOTIFICATIONS_SLACK_S'
+KAFKA_TOPIC = os.environ.get('KAFKA_TOPIC') or 'NOTIFICATIONS_MQTT_S'
 KAFKA_GROUP_ID = 'nuvla-notification-mqtt'
 
 log_local = get_logger('mqtt-notifier')
-
-gt = re.compile('>')
-lt = re.compile('<')
-
-COLOR_OK = "#2C9442"
-COLOR_NOK = "#B70B0B"
 
 def now_timestamp():
     return datetime.now().timestamp()
@@ -82,7 +74,7 @@ def send_mqtt_notification(payload, mqtt_server: str):
     if not port:
         port = 1883
     log_local.info(f"Sending message to {host}:{port}/{topic}")
-    return publish.single(topic, payload, hostname=host, port=int(port))
+    return mqtt_publish.single(topic, payload, hostname=host, port=int(port))
 
 def send_message(message, mqtt_server: str):
     return send_mqtt_notification(json.dumps(message), mqtt_server)
@@ -109,16 +101,13 @@ def worker(workq: multiprocessing.Queue):
             log_local.info(f"Received message. value:\n{msg.value}\n")
             try:
                 send_message(message_content(msg.value), msg.value.get('DESTINATION'))
-            except requests.exceptions.RequestException as ex:
-                log_local.error(f'Failed sending {msg} to {mqtt_server}: {ex}')
+            except Exception as ex:
+                log_local.error(f'Failed sending {msg} to {msg.value.get('DESTINATION')}: {ex}')
                 PROCESS_STATES.state('error - recoverable')
-                NOTIFICATIONS_ERROR.labels('mqtt', f'{msg.value.get("NAME") \
-                                                      or msg.value["SUBS_NAME"]}',
-                                           mqtt_topic, type(ex)).inc()
+                NOTIFICATIONS_ERROR.labels('mqtt', f'{msg.value.get("NAME") or msg.value["SUBS_NAME"]}', msg.value.get('MQTT_TOPIC'), type(ex)).inc()
                 continue
             
-            log_local.info(f"sent: {msg} to {msg.value.get('DESTINATION')} \
-                           on {msg.value.get('MQTT_TOPIC')}")
+        # log_local.info(f"sent: {msg} to {msg.value.get('DESTINATION')} on {msg.value.get('MQTT_TOPIC')}")
 
 
 if __name__ == "__main__":

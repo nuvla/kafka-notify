@@ -44,8 +44,11 @@ def kafka_consumer(topic, bootstrap_servers, group_id, auto_offset_reset='latest
                              bootstrap_servers=bootstrap_servers,
                              auto_offset_reset=auto_offset_reset,
                              group_id=group_id,
-                             key_deserializer=lambda x: str(x.decode()),
-                             value_deserializer=lambda x: json.loads(x.decode()))
+                             # key deserializer. 
+                             # check if null and return empty string
+                             key_deserializer=lambda x: '' if x is None else str(x.decode()),
+                             value_deserializer=lambda x: '' if x is None else json.loads(x.decode())
+                             )
     log.info("Kafka consumer created.")
     return consumer
 
