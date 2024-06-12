@@ -3,7 +3,6 @@
 import json
 from datetime import datetime
 import multiprocessing
-import requests
 import os
 from paho.mqtt import publish as mqtt_publish
 
