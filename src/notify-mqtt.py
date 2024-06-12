@@ -29,111 +29,74 @@ COLOR_NOK = "#B70B0B"
 def now_timestamp():
     return datetime.now().timestamp()
 
-
 def message_content(msg_params: dict):
+    log_local.info(f"Building message content for {msg_params}")
+
     r_uri = msg_params.get('RESOURCE_URI')
     link_text = msg_params.get('RESOURCE_NAME') or r_uri
     component_link = f'<{NUVLA_ENDPOINT}/ui/{r_uri}|{link_text}>'
 
-    if msg_params.get('RECOVERY', False):
-        color = COLOR_OK
-        notif_title = f"[OK] {msg_params.get('SUBS_NAME')}"
-    else:
-        color = COLOR_NOK
-        notif_title = f"[Alert] {msg_params.get('SUBS_NAME')}"
+    for key, value in msg_params.items():
+        log_local.info(f"Key: {key}, Value: {value}")
+        if value is None:
+            msg_params[key] = ''
 
-    subs_config_link = f'<{NUVLA_ENDPOINT}/ui/notifications|Notification configuration>'
+    FIELDS=["SUBS_ID",
+            "NAME",
+            "SUBS_NAME",
+            "SUBS_DESCRIPTION",
+            "RESOURCE_URI",
+            "RESOURCE_NAME",
+            "RESOURCE_DESCRIPTION",
+            "METRIC",
+            "CONDITION",
+            "CONDITION_VALUE",
+            "VALUE",
+            "TIMESTAMP",
+            "TRIGGER_RESOURCE_PATH",
+            "TRIGGER_RESOURCE_NAME",
+            "RECOVERY",
+            ]
+    
+    outfield = {}
+    for ffield in FIELDS:
+        log_local.info(f"Field: {ffield}, Value: {msg_params.get(ffield)}")
+        if msg_params.get(ffield):
+            outfield[ffield] = msg_params.get(ffield)
+            # outfield.append({ffield: msg_params.get(ffield),})
 
-    # Order of the fields defines the layout of the message.
-
-    fields = [
-        {
-            'title': notif_title,
-            'value': subs_config_link,
-            'short': True
-        }
-    ]
-
+    # Order of the fields defines the layout of the message
     if msg_params.get('TRIGGER_RESOURCE_PATH'):
         resource_path = msg_params.get('TRIGGER_RESOURCE_PATH')
         resource_name = msg_params.get('TRIGGER_RESOURCE_NAME')
         trigger_link = \
             f'<{NUVLA_ENDPOINT}/ui/{resource_path}|{resource_name}>'
-        fields.append({
-            'title': 'Application was published',
-            'value': trigger_link,
-            'short': True
-        })
+        
+    outfield['COMPONENT_LINK'] = component_link
+    outfield['ts'] = now_timestamp()
 
-    fields.append({
-        'title': 'Affected resource(s)',
-        'value': component_link,
-        'short': True
-    })
+    return outfield
 
-    if msg_params.get('CONDITION'):
-        metric = msg_params.get('METRIC')
-        if msg_params.get('VALUE'):
-            cond_value = msg_params.get('CONDITION_VALUE')
-            condition = f"{msg_params.get('CONDITION')}"
-            criteria = f'_{metric}_ {gt.sub("&gt;", lt.sub("&lt;", condition))} *{cond_value}*'
-            value = f"*{msg_params.get('VALUE')}*"
-        else:
-            condition = msg_params.get('CONDITION', '').upper()
-            criteria = f'_{metric}_'
-            value = f'*{condition}*'
-
-        fields.extend([
-            {
-                'title': 'Criteria',
-                'value': criteria,
-                'short': True
-            },
-            {
-                'title': 'Value',
-                'value': value,
-                'short': True
-            }]
-        )
-
-    fields.append(
-        {
-            'title': 'Event Timestamp',
-            'value': timestamp_convert(msg_params.get('TIMESTAMP')),
-            'short': True
-        }
-    )
-
-    attachments = [{
-        'color': color,
-        'author_name': 'Nuvla.io',
-        'author_link': 'https://nuvla.io',
-        'author_icon': 'https://sixsq.com/assets/img/logo-sixsq.svg',
-        'fields': fields,
-        'footer': 'https://sixsq.com',
-        'footer_icon': 'https://sixsq.com/assets/img/logo-sixsq.svg',
-        'ts': now_timestamp()
-    }
-    ]
-
-    return {'attachments': attachments}
-
-def send_mqtt_notification(topic: str, payload, mqtt_server: str):
-    host,port= extract_destination(mqtt_server)
+def send_mqtt_notification(payload, mqtt_server: str):
+    host,port,topic = extract_destination(mqtt_server)
     if not port:
         port = 1883
+    log_local.info(f"Sending message to {host}:{port}/{topic}")
     return publish.single(topic, payload, hostname=host, port=int(port))
 
-def send_message(topic: str, message, mqtt_server: str):
-    return send_mqtt_notification(topic, json.dumps(message), mqtt_server)
+def send_message(message, mqtt_server: str):
+    return send_mqtt_notification(json.dumps(message), mqtt_server)
 
 def extract_destination(dest: str) -> tuple:
-    # split on the first colon
-    hostname = dest.split(':', 1)[0]
+    log_local.info(f"Extracting destination from {dest}")
+    topic = dest.split('/', 1)[1]
+    log_local.info(f"Extracted topic: {topic}")
     if len(dest.split(':')) == 1:
-        return hostname, None
-    port = dest.split(':', 1)[1]
-    return hostname, port
+        hostname = dest.split('/', 1)[0]
+        return hostname, None, topic
+    hostname = dest.split(':', 1)[0]
+    port = dest.split(':', 1)[1].split('/', 1)[0]
+    return hostname, port, topic
 
 def worker(workq: multiprocessing.Queue):
     while True:
@@ -145,8 +108,7 @@ def worker(workq: multiprocessing.Queue):
             log_local.info(f"Received message. key:\n{msg.key}\n")
             log_local.info(f"Received message. value:\n{msg.value}\n")
             try:
-                send_message(msg.value.get('MQTT_TOPIC'), \
-                             message_content(msg.value), msg.value.get('DESTINATION'))
+                send_message(message_content(msg.value), msg.value.get('DESTINATION'))
             except requests.exceptions.RequestException as ex:
                 log_local.error(f'Failed sending {msg} to {mqtt_server}: {ex}')
                 PROCESS_STATES.state('error - recoverable')
@@ -155,7 +117,7 @@ def worker(workq: multiprocessing.Queue):
                                            mqtt_topic, type(ex)).inc()
                 continue
             
-            log_local.info(f'sent: {msg} to \{msg.value.get('DESTINATION')} \
+            log_local.info(f'sent: {msg} to {msg.value.get('DESTINATION')} \
                            on {msg.value.get('MQTT_TOPIC')}')
 
 
