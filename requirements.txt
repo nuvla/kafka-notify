@@ -5,3 +5,4 @@ Jinja2==2.11.2
 # To fix https://github.com/aws/aws-sam-cli/issues/3661
 markupsafe==2.0.1
 prometheus_client==0.19.0
+paho-mqtt==2.1.0
