@@ -120,7 +120,7 @@ def worker(workq: multiprocessing.Queue):
                 log_local.error(f"Failed sending message: {msg.value.get('NAME') or msg.value['SUBS_NAME']} to {msg.value.get('DESTINATION')}")
                 continue
     
-        log_local.info(f"sent: {msg.value.get('SUBS_NAME')} to {msg.value.get('DESTINATION')} on {msg.value.get('MQTT_TOPIC')}")
+        log_local.info(f"sent: {msg.value.get('SUBS_NAME')} to {msg.value.get('DESTINATION')}")
 
 
 if __name__ == "__main__":
