@@ -4,6 +4,7 @@ import json
 from datetime import datetime
 import multiprocessing
 import os
+import threading
 from paho.mqtt import publish as mqtt_publish
 
 
@@ -21,14 +22,14 @@ def now_timestamp():
     return datetime.now().timestamp()
 
 def message_content(msg_params: dict) -> dict:
-    log_local.info(f"Building message content for {msg_params}")
+    log_local.debug(f"Building message content for {msg_params}")
 
     r_uri = msg_params.get('RESOURCE_URI')
     link_text = msg_params.get('RESOURCE_NAME') or r_uri
     component_link = f'<{NUVLA_ENDPOINT}/ui/{r_uri}|{link_text}>'
 
     for key, value in msg_params.items():
-        log_local.info(f"Key: {key}, Value: {value}")
+        log_local.debug(f"Key: {key}, Value: {value}")
         if value is None:
             msg_params[key] = ''
 
@@ -51,7 +52,7 @@ def message_content(msg_params: dict) -> dict:
     
     outfield = {}
     for ffield in FIELDS:
-        log_local.info(f"Field: {ffield}, Value: {msg_params.get(ffield)}")
+        log_local.debug(f"Field: {ffield}, Value: {msg_params.get(ffield)}")
         if msg_params.get(ffield):
             outfield[ffield] = msg_params.get(ffield)
 
@@ -75,13 +76,24 @@ def send_mqtt_notification(payload, mqtt_server: str):
     log_local.info(f"Sending message to {host}:{port}/{topic}")
     return mqtt_publish.single(topic, payload, hostname=host, port=int(port))
 
+
+def send_message_in_thread(payload, mqtt_server):
+    def thread_function():
+        try:
+            send_mqtt_notification(payload, mqtt_server)
+        except Exception as e:
+            log_local.error(f"An error occurred: {e}")
+
+    thread = threading.Thread(target=thread_function)
+    thread.start()
+
 def send_message(message, mqtt_server: str):
     return send_mqtt_notification(json.dumps(message), mqtt_server)
 
 def extract_destination(dest: str) -> tuple:
-    log_local.info(f"Extracting destination from {dest}")
+    log_local.debug(f"Extracting destination from {dest}")
     topic = dest.split('/', 1)[1]
-    log_local.info(f"Extracted topic: {topic}")
+    log_local.debug(f"Extracted topic: {topic}")
     if len(dest.split(':')) == 1:
         hostname = dest.split('/', 1)[0]
         return hostname, None, topic
@@ -96,17 +108,19 @@ def worker(workq: multiprocessing.Queue):
         PROCESS_STATES.state('processing')
 
         if msg:
-            log_local.info(f"Received message. key:\n{msg.key}\n")
-            log_local.info(f"Received message. value:\n{msg.value}\n")
+            log_local.debug(f"Received message. key:\n{msg.key}\n")
+            log_local.debug(f"Received message. value:\n{msg.value}\n")
             try:
                 send_message(message_content(msg.value), msg.value.get('DESTINATION'))
+                # send_message_in_thread(message_content(msg.value), msg.value.get('DESTINATION'))
+
             except Exception as ex:
-                log_local.error(f'Failed sending {msg} to {msg.value.get('DESTINATION')}: {ex}')
                 PROCESS_STATES.state('error - recoverable')
                 NOTIFICATIONS_ERROR.labels('mqtt', f'{msg.value.get("NAME") or msg.value["SUBS_NAME"]}', msg.value.get('MQTT_TOPIC'), type(ex)).inc()
+                log_local.error(f"Failed sending message: {msg.value.get('NAME') or msg.value['SUBS_NAME']} to {msg.value.get('DESTINATION')}")
                 continue
-            
-        # log_local.info(f"sent: {msg} to {msg.value.get('DESTINATION')} on {msg.value.get('MQTT_TOPIC')}")
+    
+        log_local.info(f"sent: {msg.value.get('SUBS_NAME')} to {msg.value.get('DESTINATION')} on {msg.value.get('MQTT_TOPIC')}")
 
 
 if __name__ == "__main__":
