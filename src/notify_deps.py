@@ -40,15 +40,13 @@ DEFAULT_PROMETHEUS_EXPORTER_PORT = 9140
 
 
 def kafka_consumer(topic, bootstrap_servers, group_id, auto_offset_reset='latest'):
-    consumer = KafkaConsumer(topic,
-                             bootstrap_servers=bootstrap_servers,
-                             auto_offset_reset=auto_offset_reset,
-                             group_id=group_id,
-                             # key deserializer. 
-                             # check if null and return empty string
-                             key_deserializer=lambda x: '' if x is None else str(x.decode()),
-                             value_deserializer=lambda x: '' if x is None else json.loads(x.decode())
-                             )
+    consumer = KafkaConsumer(
+        topic,
+        bootstrap_servers=bootstrap_servers,
+        auto_offset_reset=auto_offset_reset,
+        group_id=group_id,
+        key_deserializer=lambda x: '' if x is None else str(x.decode()),
+        value_deserializer=lambda x: {} if x is None else json.loads(x.decode()))
     log.info("Kafka consumer created.")
     return consumer
 
@@ -56,6 +54,10 @@ def kafka_consumer(topic, bootstrap_servers, group_id, auto_offset_reset='latest
 def timestamp_convert(ts):
     return datetime.strptime(ts, '%Y-%m-%dT%H:%M:%SZ'). \
         strftime('%Y-%m-%d %H:%M:%S UTC')
+
+
+def now_timestamp():
+    return datetime.now().timestamp()
 
 
 def prometheus_exporter_port():
