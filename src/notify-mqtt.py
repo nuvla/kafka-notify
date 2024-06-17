@@ -1,16 +1,15 @@
 #!/usr/bin/env python3
 
-import json
-from datetime import datetime
 import multiprocessing
 import os
 import threading
+from urllib.parse import urlparse
+
 from paho.mqtt import publish as mqtt_publish
-
-
-from notify_deps import get_logger, timestamp_convert, main
-from notify_deps import NUVLA_ENDPOINT, prometheus_exporter_port
 from prometheus_client import start_http_server
+
+from notify_deps import get_logger, main
+from notify_deps import NUVLA_ENDPOINT, prometheus_exporter_port
 from metrics import PROCESS_STATES, NOTIFICATIONS_SENT, NOTIFICATIONS_ERROR, registry
 
 KAFKA_TOPIC = os.environ.get('KAFKA_TOPIC') or 'NOTIFICATIONS_MQTT_S'
@@ -18,43 +17,39 @@ KAFKA_GROUP_ID = 'nuvla-notification-mqtt'
 
 log_local = get_logger('mqtt-notifier')
 
-def now_timestamp():
-    return datetime.now().timestamp()
 
 def message_content(msg_params: dict) -> dict:
-    log_local.debug(f"Building message content for {msg_params}")
+    log_local.debug('Building message content for: %s', msg_params)
 
     r_uri = msg_params.get('RESOURCE_URI')
     link_text = msg_params.get('RESOURCE_NAME') or r_uri
     component_link = f'<{NUVLA_ENDPOINT}/ui/{r_uri}|{link_text}>'
 
     for key, value in msg_params.items():
-        log_local.debug(f"Key: {key}, Value: {value}")
         if value is None:
             msg_params[key] = ''
 
-    FIELDS=["SUBS_ID",
-            "NAME",
-            "SUBS_NAME",
-            "SUBS_DESCRIPTION",
-            "RESOURCE_URI",
-            "RESOURCE_NAME",
-            "RESOURCE_DESCRIPTION",
-            "METRIC",
-            "CONDITION",
-            "CONDITION_VALUE",
-            "VALUE",
-            "TIMESTAMP",
-            "TRIGGER_RESOURCE_PATH",
-            "TRIGGER_RESOURCE_NAME",
-            "RECOVERY",
-            ]
-    
-    outfield = {}
-    for ffield in FIELDS:
-        log_local.debug(f"Field: {ffield}, Value: {msg_params.get(ffield)}")
-        if msg_params.get(ffield):
-            outfield[ffield] = msg_params.get(ffield)
+    attrs = [
+        'SUBS_ID',
+        'NAME',
+        'SUBS_NAME',
+        'SUBS_DESCRIPTION',
+        'RESOURCE_URI',
+        'RESOURCE_NAME',
+        'RESOURCE_DESCRIPTION',
+        'METRIC',
+        'CONDITION',
+        'CONDITION_VALUE',
+        'VALUE',
+        'TIMESTAMP',
+        'TRIGGER_RESOURCE_PATH',
+        'TRIGGER_RESOURCE_NAME',
+        'RECOVERY']
+
+    result = {}
+    for attr in attrs:
+        if msg_params.get(attr):
+            result[attr] = msg_params.get(attr)
 
     # Order of the fields defines the layout of the message
     if msg_params.get('TRIGGER_RESOURCE_PATH'):
@@ -62,65 +57,65 @@ def message_content(msg_params: dict) -> dict:
         resource_name = msg_params.get('TRIGGER_RESOURCE_NAME')
         trigger_link = \
             f'<{NUVLA_ENDPOINT}/ui/{resource_path}|{resource_name}>'
-        outfield['TRIGGER_LINK'] = trigger_link
-        
-    outfield['COMPONENT_LINK'] = component_link
-    outfield['ts'] = now_timestamp()
+        result['TRIGGER_LINK'] = trigger_link
 
-    return outfield
+    result['COMPONENT_LINK'] = component_link
+
+    return result
+
+
+def extract_destination(dest: str) -> tuple:
+    # Prepend a dummy scheme for a proper parsing
+    parsed_url = urlparse('//' + dest)
+
+    host = parsed_url.hostname
+    port = parsed_url.port if parsed_url.port else 1883
+    uri = parsed_url.path.lstrip('/')
+
+    return host, port, uri
+
 
 def send_mqtt_notification(payload, mqtt_server: str):
-    host,port,topic = extract_destination(mqtt_server)
-    if not port:
-        port = 1883
-    log_local.info(f"Sending message to {host}:{port}/{topic}")
+    host, port, topic = extract_destination(mqtt_server)
+    log_local.info(f'Sending message to {host}:{port}/{topic}')
     return mqtt_publish.single(topic, payload, hostname=host, port=int(port))
 
 
-def send_message_in_thread(payload, mqtt_server):
+def send_message(payload, mqtt_server):
     def thread_function():
         try:
             send_mqtt_notification(payload, mqtt_server)
         except Exception as e:
-            log_local.error(f"An error occurred: {e}")
+            log_local.error(f'An error occurred: {e}')
 
     thread = threading.Thread(target=thread_function)
     thread.start()
 
-def send_message(message, mqtt_server: str):
-    return send_mqtt_notification(json.dumps(message), mqtt_server)
-
-def extract_destination(dest: str) -> tuple:
-    log_local.debug(f"Extracting destination from {dest}")
-    topic = dest.split('/', 1)[1]
-    log_local.debug(f"Extracted topic: {topic}")
-    if len(dest.split(':')) == 1:
-        hostname = dest.split('/', 1)[0]
-        return hostname, None, topic
-    hostname = dest.split(':', 1)[0]
-    port = dest.split(':', 1)[1].split('/', 1)[0]
-    return hostname, port, topic
 
 def worker(workq: multiprocessing.Queue):
     while True:
         PROCESS_STATES.state('idle')
+
         msg = workq.get()
+        if not msg:
+            continue
+
         PROCESS_STATES.state('processing')
 
-        if msg:
-            log_local.debug(f"Received message. key:\n{msg.key}\n")
-            log_local.debug(f"Received message. value:\n{msg.value}\n")
-            try:
-                send_message(message_content(msg.value), msg.value.get('DESTINATION'))
-                # send_message_in_thread(message_content(msg.value), msg.value.get('DESTINATION'))
+        log_local.debug("Received message. Key: %s. Value: %s", msg.key, msg.value)
+        subs_name = msg.value.get('NAME') or msg.value['SUBS_NAME']
+        dest = msg.value['DESTINATION']
+        try:
+            send_message(message_content(msg.value), dest)
+        except Exception as ex:
+            err_msg = f'Failed sending message: {subs_name} to {dest}'
+            log_local.error(err_msg)
+            PROCESS_STATES.state('error - recoverable')
+            NOTIFICATIONS_ERROR.labels('mqtt', subs_name, dest, type(ex)).inc()
+            continue
 
-            except Exception as ex:
-                PROCESS_STATES.state('error - recoverable')
-                NOTIFICATIONS_ERROR.labels('mqtt', f'{msg.value.get("NAME") or msg.value["SUBS_NAME"]}', msg.value.get('MQTT_TOPIC'), type(ex)).inc()
-                log_local.error(f"Failed sending message: {msg.value.get('NAME') or msg.value['SUBS_NAME']} to {msg.value.get('DESTINATION')}")
-                continue
-    
-        log_local.info(f"sent: {msg.value.get('SUBS_NAME')} to {msg.value.get('DESTINATION')}")
+        NOTIFICATIONS_SENT.labels('mqtt', subs_name, dest).inc()
+        log_local.info(f'sent: {msg} to {dest}')
 
 
 if __name__ == "__main__":
