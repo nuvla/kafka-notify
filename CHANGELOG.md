@@ -4,6 +4,10 @@
 
 ### Add
 
+## [0.9.0] - 2024-06-18
+
+- Add notifications publisher to MQTT.
+
 ## [0.8.0] - 2024-02-20
 
 - Expose internal business metrics for Prometheus scraping.
