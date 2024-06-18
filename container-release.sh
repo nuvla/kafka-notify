@@ -6,7 +6,12 @@ DOCKER_IMAGE=$(basename `git rev-parse --show-toplevel`)
 ###############################
 
 # default env vars in GH actions
-GIT_BRANCH=$(echo ${GITHUB_REF} | awk -F'/' '{print $(NF)}' | sed -e 's/[^a-z0-9\._-]/-/g')
+if [ -z "${GITHUB_HEAD_REF}" ];
+then
+   GIT_BRANCH=$(echo ${GITHUB_REF_NAME} | awk -F'/' '{print $(NF)}')
+else
+   GIT_BRANCH=${GITHUB_HEAD_REF}
+fi
 
 # non-tagged builds are not releases, so they always go on nuvladev
 DOCKER_ORG=${DOCKER_ORG:-nuvladev}

@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
 
 import json
-from datetime import datetime
 import multiprocessing
-import requests
 import os
 import re
+import requests
 
-from notify_deps import get_logger, timestamp_convert, main
-from notify_deps import NUVLA_ENDPOINT, prometheus_exporter_port
 from prometheus_client import start_http_server
+
+from notify_deps import get_logger, timestamp_convert, main, now_timestamp
+from notify_deps import NUVLA_ENDPOINT, prometheus_exporter_port
 from metrics import PROCESS_STATES, NOTIFICATIONS_SENT, NOTIFICATIONS_ERROR, registry
 
 KAFKA_TOPIC = os.environ.get('KAFKA_TOPIC') or 'NOTIFICATIONS_SLACK_S'
@@ -22,10 +22,6 @@ lt = re.compile('<')
 
 COLOR_OK = "#2C9442"
 COLOR_NOK = "#B70B0B"
-
-
-def now_timestamp():
-    return datetime.now().timestamp()
 
 
 def message_content(msg_params: dict):
