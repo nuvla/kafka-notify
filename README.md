@@ -9,7 +9,7 @@ defined in the `.github/workflows/release.yml` file.
 
 Kafka topics are used as the source of the messages.
 
-Messages can be sent to Slack or Email. See examples below. Where
+Messages can be sent to Slack, Email, or MQQT broker. See examples below. Where
 applicable, environment variables contain source code defaults.
 
 ```
