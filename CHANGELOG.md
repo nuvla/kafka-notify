@@ -4,6 +4,8 @@
 
 ### Add
 
+- Add support for XOAuth2 authentication for SMTP.
+
 ## [0.9.0] - 2024-06-18
 
 - Add notifications publisher to MQTT.
