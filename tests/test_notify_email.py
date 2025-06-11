@@ -138,10 +138,10 @@ class TestSMTPParams(unittest.TestCase):
 
     def test_set_smtp_params_from_nuvla_config(self):
         smtp_params = _load_smtp_params()
-        assert smtp_params.smtp_port == 123
-        assert smtp_params.smtp_xoauth2 == "google"
-        assert smtp_params.provider() == "google"
-        assert smtp_params.smtp_xoauth2_config.client_id == "client-id"
+        self.assertEqual(smtp_params.smtp_port, 123)
+        self.assertEqual(smtp_params.smtp_xoauth2, "google")
+        self.assertEqual(smtp_params.provider(), "google")
+        self.assertEqual(smtp_params.smtp_xoauth2_config.client_id, "client-id")
 
     def test_load_from_file(self):
         os.environ[notify_email.SMTP_CONFIG_ENV] = self.fn
