@@ -21,6 +21,8 @@ jobs:
           python-version: '3.8'
 
       - name: Run unit tests
+        env:
+          PYTHONPATH: ${{ github.workspace }}/src
         run: |
           pip install -r requirements.tests.txt
           pytest tests/ --junitxml=test-report.xml -v
