@@ -54,9 +54,12 @@ def get_smtp_config_from_nuvla() -> dict:
 
 
 def load_smtp_config_from_file() -> dict:
-    if not os.path.exists(os.environ['SMTP_CONFIG']):
-        raise FileNotFoundError(f"SMTP config file not found: {os.environ['SMTP_CONFIG']}")
-    with open(os.environ['SMTP_CONFIG'], 'r') as f:
+    smtp_config_path = os.environ.get(SMTP_CONFIG_ENV)
+    if not smtp_config_path:
+        raise EnvironmentError(f"Environment variable {SMTP_CONFIG_ENV} is not set.")
+    if not os.path.exists(smtp_config_path):
+        raise FileNotFoundError(f"SMTP config file not found: {smtp_config_path}")
+    with open(smtp_config_path, 'r') as f:
         return yaml.safe_load(f)
 
 
