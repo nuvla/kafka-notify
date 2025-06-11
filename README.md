@@ -50,4 +50,4 @@ configs:
       file: smtp-config.yaml
 ```
 
-For the example of `smpt-config.yaml`, see the [smtp-config-xoauth2-google.yaml.example](smtp-config-xoauth2-google.yaml.example) file.
+For the example of `smtp-config.yaml`, see the [smtp-config-xoauth2-google.yaml.example](smtp-config-xoauth2-google.yaml.example) file.
