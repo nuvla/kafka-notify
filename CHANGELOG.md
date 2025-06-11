@@ -4,6 +4,8 @@
 
 ### Add
 
+## [0.10.0] - 2025-06-11
+
 - Add support for XOAuth2 authentication for SMTP.
 
 ## [0.9.0] - 2024-06-18
