@@ -9,7 +9,7 @@ from datetime import datetime
 from kafka import KafkaConsumer
 
 log_formatter = logging.Formatter(
-    '%(asctime)s - %(name)s - %(process)d - %(levelname)s - %(message)s')
+    '%(asctime)s - %(name)s - %(process)d - %(module)s:%(lineno)d - %(levelname)s - %(message)s')
 stdout_handler = logging.StreamHandler(sys.stdout)
 stdout_handler.setFormatter(log_formatter)
 
@@ -64,17 +64,53 @@ def prometheus_exporter_port():
     return int(os.environ.get('PROMETHEUS_EXPORTER_PORT', DEFAULT_PROMETHEUS_EXPORTER_PORT))
 
 
-def main(worker, kafka_topic, group_id):
-    pool = multiprocessing.Pool(5, worker, (work_queue,))
-    for msg in kafka_consumer(kafka_topic, KAFKA_BOOTSTRAP_SERVERS, group_id=group_id):
-        while True:
-            try:
-                work_queue.put(msg, timeout=.05)
-                break
-            except queue.Full:
-                log.warning('Queue full. Sleep 1 sec.')
-                time.sleep(1)
-    work_queue.close()
-    work_queue.join_thread()
-    pool.close()
-    pool.join()
+def main(worker_fn, kafka_topic: str, group_id: str, *, initargs: tuple = (),
+         num_workers: int = 5, queue_maxsize: int = 100,
+         consumer_poll_timeout: float = 0.05):
+    """
+    Launch a pool of worker processes consuming Kafka messages.
+
+    Parameters:
+        worker_fn: Worker function run in each process.
+        kafka_topic: Kafka topic to consume from.
+        group_id: Kafka consumer group ID.
+        initargs: Tuple of arguments passed to each worker process.
+        num_workers: Number of worker processes.
+        queue_maxsize: Max size of shared work queue.
+        consumer_poll_timeout: Timeout for placing item in queue.
+    """
+
+    log.info("Starting Kafka worker pool with topic '%s' and group '%s'", kafka_topic, group_id)
+
+    work_queue = multiprocessing.Queue(maxsize=queue_maxsize)
+
+    # Extend initargs to include the work_queue
+    extended_initargs = (work_queue,) + initargs
+
+    # Create worker pool
+    pool = multiprocessing.Pool(
+        processes=num_workers,
+        initializer=worker_fn,
+        initargs=extended_initargs
+    )
+
+    try:
+        consumer = kafka_consumer(kafka_topic, KAFKA_BOOTSTRAP_SERVERS, group_id=group_id)
+        for msg in consumer:
+            while True:
+                try:
+                    work_queue.put(msg, timeout=consumer_poll_timeout)
+                    break
+                except queue.Full:
+                    log.warning('Work queue full. Sleeping 1 second before retrying...')
+                    time.sleep(1)
+    except KeyboardInterrupt:
+        log.warning("Interrupted by user. Shutting down.")
+    except Exception as e:
+        log.error("Unhandled error in main loop: %s", e)
+    finally:
+        work_queue.close()
+        work_queue.join_thread()
+        pool.close()
+        pool.join()
+        log.info("Kafka worker pool shut down gracefully.")

@@ -1,0 +1,9 @@
+smtp-port: 465
+smtp-host: smtp.gmail.com
+smtp-username: user@example.com
+smtp-debug: true
+smtp-xoauth2: google
+smtp-xoauth2-config:
+  client-id: your-client-id
+  client-secret: your-client-secret
+  refresh-token: your-refresh-token

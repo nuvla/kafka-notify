@@ -4,6 +4,9 @@ from unittest.mock import Mock
 import shutil
 from prometheus_client import multiprocess
 
+import xoauth2_client
+
+
 os.environ['PROMETHEUS_MULTIPROC_DIR'] = ''
 os.path.exists = Mock(return_value=True)
 os.mkdir = Mock()
@@ -89,3 +92,98 @@ class NotifyEmail(unittest.TestCase):
         }
         html = html_content(msg)
         open('email-Apps-Published-for-AppBq.html', 'w').write(html)
+
+
+_get_smtp_config_from_nuvla = notify_email.get_smtp_config_from_nuvla
+
+SMTP_CONFIG_NUVLA = {
+    "id": "configuration/nuvla",
+    "resource-type": "configuration",
+    "smtp-ssl": True,
+    "smtp-port": 123,
+    "smtp-host": "smtp.gmail.com",
+    "smtp-username": "mailer@sixsq.com",
+    "smtp-password": "",
+    "smtp-debug": True,
+    "smtp-xoauth2": "google",
+    "smtp-xoauth2-config": {
+        "client-id": "client-id",
+        "client-secret": "client-secret",
+        "refresh-token": "refresh-token"
+    }
+}
+
+
+def _load_smtp_params() -> xoauth2_client.SMTPParams:
+    notify_email.get_smtp_config_from_nuvla = Mock(return_value=SMTP_CONFIG_NUVLA)
+    return notify_email.load_smtp_params()
+
+
+class TestSMTPParams(unittest.TestCase):
+
+    fn = 'test_smtp_config.yaml'
+
+    def setUp(self):
+        notify_email.SMTP_PARAMS = None
+
+    def tearDown(self):
+        notify_email.get_smtp_config_from_nuvla = _get_smtp_config_from_nuvla
+
+        if notify_email.SMTP_CONFIG_ENV in os.environ:
+            del os.environ[notify_email.SMTP_CONFIG_ENV]
+        try:
+            os.remove(self.fn)
+        except:
+            pass
+
+    def test_set_smtp_params_from_nuvla_config(self):
+        smtp_params = _load_smtp_params()
+        assert smtp_params.smtp_port == 123
+        assert smtp_params.smtp_xoauth2 == "google"
+        assert smtp_params.provider() == "google"
+        assert smtp_params.smtp_xoauth2_config.client_id == "client-id"
+
+    def test_load_from_file(self):
+        os.environ[notify_email.SMTP_CONFIG_ENV] = self.fn
+        with open(self.fn, 'w') as f:
+            f.write("""smtp-port: 587
+smtp-host: smtp.gmail.com
+smtp-username: user@example.com
+smtp-debug: true
+smtp-xoauth2: google
+smtp-xoauth2-config:
+  client-id: client-id
+  client-secret: client-secret
+  refresh-token: refresh-token
+""")
+
+        config = notify_email.load_smtp_config_from_file()
+
+        assert config['smtp-port'] == 587
+        assert config['smtp-host'] == 'smtp.gmail.com'
+        assert config['smtp-xoauth2-config']['client-id'] == 'client-id'
+
+    def test_load_from_file_missing(self):
+        os.environ[notify_email.SMTP_CONFIG_ENV] = self.fn
+        with self.assertRaises(FileNotFoundError):
+            notify_email.load_smtp_config_from_file()
+
+
+class TestSMTPClient(unittest.TestCase):
+
+    def setUp(self):
+        notify_email.SMTP_PARAMS = None
+        xoauth2_client.XOAuth2SMTPClientGoogle._refresh_token_now = Mock()
+
+    def tearDown(self):
+        notify_email.get_smtp_config_from_nuvla = _get_smtp_config_from_nuvla
+
+    def test_get_smtp_client(self):
+        smtp_params = _load_smtp_params()
+        client = notify_email.get_smtp_client(smtp_params)
+        assert client is not None
+        assert hasattr(client, 'send_email')
+        assert hasattr(client, 'stop')
+        assert client.smtp_host == 'smtp.gmail.com'
+        assert client.smtp_port == 123
+        assert client.refresh_token == 'refresh-token'

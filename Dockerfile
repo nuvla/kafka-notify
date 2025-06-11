@@ -8,9 +8,8 @@ RUN pip3 install --prefix=/install -r /requirements.txt
 
 FROM base
 COPY --from=builder /install /usr/local
-COPY src/notify* /app/
-RUN chmod +x /app/notify*
-COPY src/metrics.py /app/
+COPY src/*.py /app/
+RUN chmod +x /app/notify-*
 COPY src/run.sh /app/
 COPY src/templates /app/templates
 RUN mkdir /app/prom_data

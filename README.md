@@ -13,6 +13,8 @@ Messages can be sent to Slack, Email, or MQTT broker. See examples below. Where
 applicable, environment variables contain source code defaults.
 
 ```
+services:
+
   notify-slack:
     image: nuvladev/kafka-notify:master
     networks:
@@ -28,16 +30,24 @@ applicable, environment variables contain source code defaults.
     image: nuvladev/kafka-notify:master
     networks:
       - test-net
+    command:
+      - email
     environment:
       - KAFKA_BOOTSTRAP_SERVERS: "kafka:9092"
       - KAFKA_TOPIC: "NOTIFICATIONS_EMAIL_S"
-      - NUVLA_ENDPOINT: "https://nuvla.io"
-      # If not provided, will be taken from configuration/nuvla resource.
-      - SMTP_HOST: 
-      - SMTP_PORT:
-      - SMTP_SSL: 
-      - SMTP_USER: 
-      - SMTP_PASSWORD:
-    command:
-      - email
+      # If $SMTP_CONFIG is not provided, the configuration will be taken 
+      # from configuration/nuvla resource.
+      - SMTP_CONFIG: /etc/nuvla/smtp-config.yaml
+      - NUVLA_ENDPOINT: https://nuvla.io
+    # Set along with the SMTP_CONFIG environment variable
+    config:
+        - source: smtp-config
+          target: /etc/nuvla/smtp-config.yaml
+      
+configs:
+    # Set along with the SMTP_CONFIG environment variable
+    smtp-config:
+      file: smtp-config.yaml
 ```
+
+For the example of `smpt-config.yaml`, see the [smtp-config-xoauth2-google.yaml.example](smtp-config-xoauth2-google.yaml.example) file.

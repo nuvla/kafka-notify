@@ -1,19 +1,25 @@
 #!/usr/bin/env python3
 
-import multiprocessing
 import os
-import requests
-import smtplib
 import time
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+
+import yaml
+import multiprocessing
+import requests
+import smtplib
 from jinja2 import Template
 from datetime import datetime
 
 from notify_deps import get_logger, timestamp_convert, main
 from notify_deps import NUVLA_ENDPOINT, prometheus_exporter_port
 from prometheus_client import start_http_server
-from metrics import PROCESS_STATES, NOTIFICATIONS_SENT, NOTIFICATIONS_ERROR, registry
+from metrics import (PROCESS_STATES, NOTIFICATIONS_SENT, NOTIFICATIONS_ERROR,
+                     registry)
+from xoauth2_client import (SMTPParams, SMTPParamsGoogle, XOAuth2SMTPClient,
+                            XOAuth2SMTPClientGoogle)
+
 
 log_local = get_logger('email')
 
@@ -27,7 +33,7 @@ EMAIL_TEMPLATES = {
 
 NUVLA_API_LOCAL = 'http://api:8200'
 
-SMTP_HOST = SMTP_USER = SMTP_PASSWORD = SMTP_PORT = SMTP_SSL = ''
+SMTP_CONFIG_ENV = 'SMTP_CONFIG'
 
 IMG_ALERT_OK = 'ui/images/nuvla-alert-ok.png'
 IMG_ALERT_NOK = 'ui/images/nuvla-alert-nok.png'
@@ -37,7 +43,7 @@ class SendFailedMaxAttempts(Exception):
     pass
 
 
-def get_nuvla_config():
+def get_smtp_config_from_nuvla() -> dict:
     nuvla_api_authn_header = 'group/nuvla-admin'
     config_url = f'{NUVLA_API_LOCAL}/api/configuration/nuvla'
     headers = {'nuvla-authn-info': nuvla_api_authn_header}
@@ -47,27 +53,29 @@ def get_nuvla_config():
     return resp.json()
 
 
-def set_smtp_params():
-    global SMTP_HOST, SMTP_USER, SMTP_PASSWORD, SMTP_PORT, SMTP_SSL
+def load_smtp_config_from_file() -> dict:
+    if not os.path.exists(os.environ['SMTP_CONFIG']):
+        raise FileNotFoundError(f"SMTP config file not found: {os.environ['SMTP_CONFIG']}")
+    with open(os.environ['SMTP_CONFIG'], 'r') as f:
+        return yaml.safe_load(f)
+
+
+def load_smtp_params() -> SMTPParams:
     try:
-        if os.environ.get('SMTP_HOST') and len(os.environ.get('SMTP_HOST')) > 0:
-            SMTP_HOST = os.environ['SMTP_HOST']
-            SMTP_USER = os.environ['SMTP_USER']
-            SMTP_PASSWORD = os.environ['SMTP_PASSWORD']
-            try:
-                SMTP_PORT = int(os.environ['SMTP_PORT'])
-            except ValueError:
-                raise ValueError(f"Incorrect value for SMTP_PORT number: {os.environ['SMTP_PORT']}")
-            SMTP_SSL = os.environ['SMTP_SSL'].lower() in ['true', 'True']
+        if SMTP_CONFIG_ENV in os.environ:
+            config = load_smtp_config_from_file()
+            log_local.info('Loaded SMTP config from file: %s', os.environ[SMTP_CONFIG_ENV])
         else:
-            nuvla_config = get_nuvla_config()
-            SMTP_HOST = nuvla_config['smtp-host']
-            SMTP_USER = nuvla_config['smtp-username']
-            SMTP_PASSWORD = nuvla_config['smtp-password']
-            SMTP_PORT = nuvla_config['smtp-port']
-            SMTP_SSL = nuvla_config['smtp-ssl']
+            config = get_smtp_config_from_nuvla()
+            log_local.info('Loaded SMTP config from Nuvla API: %s', NUVLA_API_LOCAL)
+
+        provider = config.get('smtp-xoauth2')
+        if provider == 'google':
+            return SMTPParamsGoogle(**config)
+        raise ValueError(f'Unsupported XOAUTH2 provider: {provider}')
     except Exception as ex:
-        msg = f'Provide full SMTP config either via env vars or in configuration/nuvla: {ex}'
+        msg = (f'Failed getting XOAUTH2 config either from config or '
+               f'configuration/nuvla: {ex}')
         log_local.error(msg)
         raise ValueError(msg)
 
@@ -78,16 +86,17 @@ KAFKA_GROUP_ID = 'nuvla-notification-email'
 SEND_EMAIL_ATTEMPTS = 3
 
 
-def get_smtp_server(debug_level=0) -> smtplib.SMTP:
-    if SMTP_SSL:
-        server = smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT)
-    else:
-        server = smtplib.SMTP(SMTP_HOST, SMTP_PORT)
-    server.ehlo()
-    server.login(SMTP_USER, SMTP_PASSWORD)
-    server.set_debuglevel(debug_level)
-    log_local.info('SMTP initialised.')
-    return server
+def get_smtp_client(smtp_parms: SMTPParams) -> XOAuth2SMTPClient:
+    if smtp_parms is None:
+        log_local.error('SMTP parameters must be provided to initialize the SMTP client.')
+        raise ValueError('SMTP parameters must be provided.')
+    if smtp_parms.provider() == 'google':
+        smtp_client = XOAuth2SMTPClientGoogle(smtp_parms)
+        log_local.info('XOAUTH2 SMTP client initialized.')
+        return smtp_client
+    msg = f'Unsupported XOAUTH2 provider: {smtp_parms.provider()}'
+    log_local.error(msg)
+    raise ValueError(msg)
 
 
 def get_email_template(msg_params: dict) -> Template:
@@ -143,38 +152,45 @@ def html_content(msg_params: dict):
     return get_email_template(msg_params).render(**params)
 
 
-def send(server: smtplib.SMTP, recipients, subject, html, attempts=SEND_EMAIL_ATTEMPTS,
-         sleep_interval=0.5):
-    msg = MIMEMultipart('alternative')
-    msg['Subject'] = subject
-    msg['From'] = f'Nuvla <{server.user}>'
-    msg['To'] = ', '.join(recipients)
-    msg.attach(MIMEText(html, 'html', 'utf-8'))
+def send(smtp_client: XOAuth2SMTPClientGoogle, recipients, subject, html,
+         attempts=SEND_EMAIL_ATTEMPTS, sleep_interval=0.5, smtp_params: SMTPParams = None):
+    wname = multiprocessing.current_process().name
     for i in range(attempts):
         try:
-            resp = server.sendmail(server.user, recipients, msg.as_string())
-            if resp:
-                log_local.error(f'SMTP failed to deliver email to: {resp}')
+            smtp_client.send_email(
+                recipients=recipients,
+                subject=subject,
+                html=html
+            )
+            log_local.info(f'Email sent to {recipients}')
             return
-        except smtplib.SMTPServerDisconnected:
+        except smtplib.SMTPException as ex:
             if i < attempts - 1:  # no need to sleep on the last iteration
                 time.sleep(sleep_interval)
-                log_local.warning('Reconnecting to SMTP server...')
-                server = get_smtp_server()
-                log_local.warning('Reconnecting to SMTP server... done.')
-        except smtplib.SMTPException as ex:
-            log_local.error(f'Failed sending email due to SMTP error: {ex}')
+                log_local.error(f'{wname} - Failed sending email due to SMTP error: {ex}')
+                log_local.warning(f'{wname} - Reconnecting to SMTP server...')
+                smtp_client.stop()
+                smtp_client = get_smtp_client(smtp_params)
+                log_local.warning(f'{wname} - Reconnecting to SMTP server... done.')
+        except Exception as ex:
+            log_local.error(f'Failed sending email: {ex}')
             NOTIFICATIONS_ERROR.labels('email', subject, ','.join(recipients), type(ex)).inc()
             PROCESS_STATES.state('error - recoverable')
+            if i < attempts - 1:
+                time.sleep(sleep_interval)
+            smtp_client.stop()
+            smtp_client = get_smtp_client(smtp_params)
     raise SendFailedMaxAttempts(f'Failed sending email after {attempts} attempts.')
 
 
-def get_recipients(v: dict):
+def get_recipients(v: dict) -> list:
     return list(filter(lambda x: x != '', v.get('DESTINATION', '').split(' ')))
 
 
-def worker(workq: multiprocessing.Queue):
-    smtp_server = get_smtp_server()
+def worker(workq: multiprocessing.Queue, smtp_params: SMTPParams = None):
+    wname = multiprocessing.current_process().name
+    log_local.info('Worker started: %s', wname)
+    smtp_client = get_smtp_client(smtp_params)
     while True:
         PROCESS_STATES.state('idle')
         msg = workq.get()
@@ -182,25 +198,19 @@ def worker(workq: multiprocessing.Queue):
         if msg:
             recipients = get_recipients(msg.value)
             if len(recipients) == 0:
-                log_local.warning(f'No recipients provided in: {msg.value}')
+                log_local.warning(f'{wname} - No recipients provided in: {msg.value}')
                 continue
             r_id = msg.value.get('RESOURCE_ID')
             r_name = msg.value.get('NAME')
             subject = msg.value.get('SUBS_NAME') or f'{r_name or r_id} alert'
             try:
                 html = html_content(msg.value)
-                send(smtp_server, recipients, subject, html)
-                log_local.info(f'sent: {msg} to {recipients}')
+                send(smtp_client, recipients, subject, html, smtp_params=smtp_params)
+                log_local.info(f'{wname} - sent: {msg} to {recipients}')
                 NOTIFICATIONS_SENT.labels('email', f'{r_name or r_id}', ','.join(recipients)).inc()
-            except smtplib.SMTPException as ex:
-                log_local.error(f'Failed sending email due to SMTP error: {ex}')
-                log_local.warning('Reconnecting to SMTP server...')
-                smtp_server = get_smtp_server()
-                log_local.warning('Reconnecting to SMTP server... done.')
-                NOTIFICATIONS_ERROR.labels('email', r_name, ','.join(recipients), type(ex)).inc()
-                PROCESS_STATES.state('error - recoverable')
             except Exception as ex:
-                log_local.error(f'Failed sending email: {ex}')
+                # TODO: Put unsent message to error queue.
+                log_local.error(f'{wname} Failed sending email: {ex}')
                 NOTIFICATIONS_ERROR.labels('email', r_name, ','.join(recipients), type(ex)).inc()
                 PROCESS_STATES.state('error - recoverable')
 
@@ -217,6 +227,7 @@ def init_email_templates(default=EMAIL_TEMPLATE_DEFAULT_FILE,
 
 if __name__ == "__main__":
     init_email_templates()
-    set_smtp_params()
+    smtp_params = load_smtp_params()
+    assert smtp_params is not None, ('SMTP parameters must be set before starting the worker.')
     start_http_server(prometheus_exporter_port(), registry=registry)
-    main(worker, KAFKA_TOPIC, KAFKA_GROUP_ID)
+    main(worker, KAFKA_TOPIC, KAFKA_GROUP_ID, initargs=(smtp_params,))
